@@ -5,7 +5,6 @@
 const SUPABASE_URL = 'https://rvowmjsxuqjbflybkfpq.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_LcNkCL02cQqE5em5kp6fjA_fe5VoSBW';
 
-// Inicializar cliente Supabase si la librería está cargada
 let supabase = null;
 if (window.supabase) {
   try {
@@ -17,18 +16,18 @@ if (window.supabase) {
 
 // Estado global de la aplicación
 const AppState = {
-  currentView: 'home', // home, login, register, explore, post-job, post-service, detail, profile, admin
+  currentView: 'home',
   currentUser: {
     id: 'user-001',
     name: 'María González',
     email: 'maria@gmail.com',
-    role: 'usuario', // 'usuario', 'proveedor', 'admin'
+    role: 'usuario',
     location: 'Santa Cruz, Bolivia',
     avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=250&q=80',
     phone: '+591 78945612'
   },
   selectedItem: null,
-  exploreTab: 'trabajos', // 'trabajos' o 'servicios'
+  exploreTab: 'trabajos',
   exploreFilter: {
     query: '',
     category: '',
@@ -37,7 +36,6 @@ const AppState = {
   },
   favorites: ['item-1', 'item-4'],
   
-  // Datos iniciales idénticos a los del plano de arquitectura (Nexoria / Yapcity)
   items: [
     {
       id: 'item-1',
@@ -202,17 +200,14 @@ function navigateTo(viewName, param = null) {
     }
   }
   
-  // Ocultar todas las vistas
   document.querySelectorAll('.app-view').forEach(el => el.classList.add('hidden'));
   
-  // Mostrar la vista seleccionada
   const activeView = document.getElementById('view-' + viewName);
   if (activeView) {
     activeView.classList.remove('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // Renderizadores específicos de cada vista
   if (viewName === 'home') renderHomeFeatured();
   if (viewName === 'explore') renderExploreView();
   if (viewName === 'detail') renderDetailView();
@@ -220,7 +215,6 @@ function navigateTo(viewName, param = null) {
   if (viewName === 'admin') renderAdminView();
 }
 
-// Alternar favoritos (❤️)
 function toggleFavorite(itemId, event) {
   if (event) event.stopPropagation();
   const idx = AppState.favorites.indexOf(itemId);
@@ -229,51 +223,51 @@ function toggleFavorite(itemId, event) {
   } else {
     AppState.favorites.push(itemId);
   }
-  // Re-render
   if (AppState.currentView === 'explore') renderExploreView();
   if (AppState.currentView === 'home') renderHomeFeatured();
   if (AppState.currentView === 'profile') renderProfileView();
   if (AppState.currentView === 'detail') renderDetailView();
 }
 
-// 1. Render Inicio / Trabajos Destacados
+// 1. Render Inicio / Trabajos Destacados (DISEÑO FRESCO Y ALEGRE)
 function renderHomeFeatured() {
   const container = document.getElementById('home-featured-grid');
   if (!container) return;
 
   const featured = AppState.items.slice(0, 4);
   container.innerHTML = featured.map(item => `
-    <div onclick="navigateTo('detail', '${item.id}')" class="group cursor-pointer bg-slate-900/80 hover:bg-slate-800/80 border border-slate-800 hover:border-slate-700 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col shadow-sm hover:shadow-xl hover:-translate-y-1">
-      <div class="relative h-44 w-full bg-slate-950 overflow-hidden">
+    <div onclick="navigateTo('detail', '${item.id}')" class="group cursor-pointer bg-white hover:bg-slate-50/50 border border-slate-200/90 hover:border-indigo-300 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col shadow-sm hover:shadow-xl hover:-translate-y-1">
+      <div class="relative h-48 w-full bg-slate-100 overflow-hidden">
         <img src="${item.images[0]}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
         <div class="absolute top-3 right-3">
-          <button onclick="toggleFavorite('${item.id}', event)" class="p-2 rounded-full bg-slate-900/80 backdrop-blur text-slate-300 hover:text-rose-500 transition-colors">
+          <button onclick="toggleFavorite('${item.id}', event)" class="p-2.5 rounded-full bg-white/90 backdrop-blur text-slate-400 hover:text-rose-500 shadow-md transition-all">
             <svg class="w-4 h-4 ${AppState.favorites.includes(item.id) ? 'fill-rose-500 text-rose-500' : 'fill-none stroke-current'}" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
             </svg>
           </button>
         </div>
       </div>
-      <div class="p-4 flex-1 flex flex-col justify-between space-y-3">
+      <div class="p-5 flex-1 flex flex-col justify-between space-y-3">
         <div>
-          <h3 class="font-bold text-white text-base group-hover:text-emerald-400 transition-colors line-clamp-1">${item.title}</h3>
-          <div class="flex items-center text-xs text-slate-400 mt-1 space-x-1">
-            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <span class="text-xs font-bold tracking-wide uppercase text-indigo-600">${item.category}</span>
+          <h3 class="font-bold text-slate-800 text-base group-hover:text-indigo-600 transition-colors line-clamp-1 mt-1">${item.title}</h3>
+          <div class="flex items-center text-xs text-slate-500 mt-1 space-x-1">
+            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
             <span>${item.location}</span>
           </div>
         </div>
-        <div class="flex items-center justify-between pt-2 border-t border-slate-800/80">
-          <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full ${item.status === 'Disponible' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">
-            ${item.status}
+        <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+          <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full ${item.status === 'Disponible' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">
+            ● ${item.status}
           </span>
-          <span class="text-sm font-extrabold text-white">Bs ${item.price}</span>
+          <span class="text-base font-black text-slate-900">Bs ${item.price}</span>
         </div>
       </div>
     </div>
   `).join('');
 }
 
-// 4. Render Explorador (Filtros + Lista)
+// 4. Render Explorador
 function renderExploreView() {
   const container = document.getElementById('explore-results-grid');
   if (!container) return;
@@ -295,53 +289,53 @@ function renderExploreView() {
   const tabServicios = document.getElementById('tab-servicios');
   if (tabTrabajos && tabServicios) {
     if (AppState.exploreTab === 'trabajos') {
-      tabTrabajos.className = 'px-5 py-2 font-semibold text-sm rounded-lg bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20';
-      tabServicios.className = 'px-5 py-2 font-semibold text-sm rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors';
+      tabTrabajos.className = 'px-6 py-2.5 font-bold text-sm rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-500/20';
+      tabServicios.className = 'px-6 py-2.5 font-bold text-sm rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors';
     } else {
-      tabServicios.className = 'px-5 py-2 font-semibold text-sm rounded-lg bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20';
-      tabTrabajos.className = 'px-5 py-2 font-semibold text-sm rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors';
+      tabServicios.className = 'px-6 py-2.5 font-bold text-sm rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-500/20';
+      tabTrabajos.className = 'px-6 py-2.5 font-bold text-sm rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors';
     }
   }
 
   if (filtered.length === 0) {
     container.innerHTML = `
-      <div class="col-span-full py-16 text-center space-y-3">
-        <div class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mx-auto text-slate-500">
+      <div class="col-span-full py-16 text-center space-y-3 bg-white rounded-2xl border border-slate-200">
+        <div class="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center mx-auto text-indigo-500">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </div>
-        <p class="text-slate-300 font-semibold">No se encontraron resultados</p>
-        <p class="text-xs text-slate-500">Intenta con otros filtros o términos de búsqueda</p>
+        <p class="text-slate-800 font-bold">No se encontraron publicaciones</p>
+        <p class="text-xs text-slate-500">Intenta cambiando los filtros o la búsqueda</p>
       </div>
     `;
     return;
   }
 
   container.innerHTML = filtered.map(item => `
-    <div onclick="navigateTo('detail', '${item.id}')" class="group cursor-pointer bg-slate-900/80 hover:bg-slate-800/80 border border-slate-800 hover:border-slate-700 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col shadow-sm hover:shadow-xl hover:-translate-y-1">
-      <div class="relative h-44 w-full bg-slate-950 overflow-hidden">
+    <div onclick="navigateTo('detail', '${item.id}')" class="group cursor-pointer bg-white hover:bg-slate-50/50 border border-slate-200/90 hover:border-indigo-300 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col shadow-sm hover:shadow-xl hover:-translate-y-1">
+      <div class="relative h-48 w-full bg-slate-100 overflow-hidden">
         <img src="${item.images[0]}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
         <div class="absolute top-3 right-3">
-          <button onclick="toggleFavorite('${item.id}', event)" class="p-2 rounded-full bg-slate-900/80 backdrop-blur text-slate-300 hover:text-rose-500 transition-colors">
+          <button onclick="toggleFavorite('${item.id}', event)" class="p-2.5 rounded-full bg-white/90 backdrop-blur text-slate-400 hover:text-rose-500 shadow-md transition-all">
             <svg class="w-4 h-4 ${AppState.favorites.includes(item.id) ? 'fill-rose-500 text-rose-500' : 'fill-none stroke-current'}" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
             </svg>
           </button>
         </div>
       </div>
-      <div class="p-4 flex-1 flex flex-col justify-between space-y-3">
+      <div class="p-5 flex-1 flex flex-col justify-between space-y-3">
         <div>
-          <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span class="text-emerald-400 font-medium">${item.category}</span>
+          <div class="flex items-center justify-between text-xs text-slate-500 mb-1">
+            <span class="text-indigo-600 font-bold uppercase tracking-wide text-[11px]">${item.category}</span>
             <span>${item.location}</span>
           </div>
-          <h3 class="font-bold text-white text-base group-hover:text-emerald-400 transition-colors line-clamp-1">${item.title}</h3>
-          <p class="text-xs text-slate-400 line-clamp-2 mt-1">${item.description}</p>
+          <h3 class="font-bold text-slate-900 text-base group-hover:text-indigo-600 transition-colors line-clamp-1">${item.title}</h3>
+          <p class="text-xs text-slate-500 line-clamp-2 mt-1 leading-relaxed">${item.description}</p>
         </div>
-        <div class="flex items-center justify-between pt-2 border-t border-slate-800/80">
-          <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full ${item.status === 'Disponible' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">
-            ${item.status}
+        <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+          <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full ${item.status === 'Disponible' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">
+            ● ${item.status}
           </span>
-          <span class="text-sm font-extrabold text-white">Bs ${item.price}</span>
+          <span class="text-base font-black text-slate-900">Bs ${item.price}</span>
         </div>
       </div>
     </div>
@@ -358,78 +352,72 @@ function renderDetailView() {
 
   container.innerHTML = `
     <!-- Top Bar -->
-    <div class="flex items-center justify-between pb-6 border-b border-slate-800">
-      <button onclick="navigateTo('explore')" class="inline-flex items-center space-x-2 text-sm text-slate-400 hover:text-white transition-colors">
+    <div class="flex items-center justify-between pb-6 border-b border-slate-200">
+      <button onclick="navigateTo('explore')" class="inline-flex items-center space-x-2 text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
         <span>Volver al explorador</span>
       </button>
-      <span class="px-3 py-1 rounded-full text-xs font-semibold ${item.status === 'Disponible' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">
+      <span class="px-3.5 py-1 rounded-full text-xs font-bold ${item.status === 'Disponible' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">
         ● ${item.status}
       </span>
     </div>
 
     <!-- Main Content Layout -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-6">
-      <!-- Left 2 Cols: Images & Description -->
       <div class="lg:col-span-2 space-y-6">
-        <div class="w-full h-80 sm:h-96 rounded-2xl overflow-hidden bg-slate-900 border border-slate-800">
+        <div class="w-full h-80 sm:h-[420px] rounded-3xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
           <img id="detail-main-img" src="${item.images[0]}" alt="${item.title}" class="w-full h-full object-cover">
         </div>
 
-        <!-- Miniaturas -->
         <div class="flex space-x-3 overflow-x-auto pb-2">
           ${item.images.map((img) => `
-            <button onclick="document.getElementById('detail-main-img').src = '${img}'" class="h-20 w-24 rounded-xl overflow-hidden border-2 border-slate-800 hover:border-emerald-500 transition-colors flex-shrink-0">
+            <button onclick="document.getElementById('detail-main-img').src = '${img}'" class="h-20 w-24 rounded-2xl overflow-hidden border-2 border-slate-200 hover:border-indigo-500 transition-colors flex-shrink-0 shadow-sm">
               <img src="${img}" class="w-full h-full object-cover">
             </button>
           `).join('')}
         </div>
 
-        <!-- Info -->
-        <div class="space-y-4 pt-4">
-          <div class="flex items-center space-x-3 text-xs text-slate-400">
-            <span class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 font-medium">${item.category}</span>
-            <span>📍 ${item.location}</span>
-            <span>📅 ${item.date}</span>
+        <div class="space-y-4 pt-2">
+          <div class="flex items-center space-x-3 text-xs text-slate-500">
+            <span class="px-3 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-bold">${item.category}</span>
+            <span class="font-medium">📍 ${item.location}</span>
+            <span class="font-medium">📅 ${item.date}</span>
           </div>
-          <h1 class="text-2xl sm:text-3xl font-extrabold text-white">${item.title}</h1>
-          <div class="text-slate-300 text-sm sm:text-base leading-relaxed whitespace-pre-line">
+          <h1 class="text-2xl sm:text-4xl font-extrabold text-slate-900">${item.title}</h1>
+          <div class="text-slate-600 text-sm sm:text-base leading-relaxed whitespace-pre-line bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
             ${item.description}
           </div>
         </div>
       </div>
 
-      <!-- Right 1 Col: Author & Actions -->
+      <!-- Lateral Info -->
       <div class="space-y-6">
-        <!-- Pricing Card -->
-        <div class="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-5 shadow-lg">
+        <div class="p-6 rounded-3xl bg-white border border-slate-200 space-y-5 shadow-lg">
           <div>
-            <span class="text-xs text-slate-400 font-medium">Precio estimado</span>
-            <p class="text-3xl font-black text-emerald-400">Bs ${item.price}</p>
+            <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">Precio estimado</span>
+            <p class="text-3xl font-black text-indigo-600 mt-1">Bs ${item.price}</p>
           </div>
 
-          <!-- Author Info -->
-          <div class="pt-4 border-t border-slate-800 flex items-center space-x-3">
-            <img src="${item.author.avatar}" alt="${item.author.name}" class="w-12 h-12 rounded-full object-cover border border-slate-700">
+          <div class="pt-5 border-t border-slate-100 flex items-center space-x-3.5">
+            <img src="${item.author.avatar}" alt="${item.author.name}" class="w-13 h-13 rounded-2xl object-cover border-2 border-slate-100 shadow-sm">
             <div>
               <div class="flex items-center space-x-1.5">
-                <h4 class="font-bold text-white text-sm">${item.author.name}</h4>
-                ${item.author.verified ? '<span title="Verificado" class="text-xs text-emerald-400">✓</span>' : ''}
+                <h4 class="font-bold text-slate-900 text-base">${item.author.name}</h4>
+                ${item.author.verified ? '<span title="Verificado" class="text-xs bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-md font-bold">✓ Verificado</span>' : ''}
               </div>
-              <div class="flex items-center space-x-1 text-xs text-amber-400">
+              <div class="flex items-center space-x-1 text-xs text-amber-500 mt-0.5 font-semibold">
                 <span>★ ${item.author.rating}</span>
-                <span class="text-slate-500">(${item.author.reviewsCount} reseñas)</span>
+                <span class="text-slate-400 font-normal">(${item.author.reviewsCount} reseñas)</span>
               </div>
             </div>
           </div>
 
-          <!-- Action Buttons -->
-          <div class="space-y-2 pt-2">
-            <button onclick="openContactModal('${item.author.name}', '${item.author.phone}', '${item.title}')" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center space-x-2">
+          <div class="space-y-2.5 pt-2">
+            <button onclick="openContactModal('${item.author.name}', '${item.author.phone}', '${item.title}')" class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold text-sm shadow-md shadow-indigo-500/25 transition-all flex items-center justify-center space-x-2">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
               <span>Contactar ahora</span>
             </button>
-            <button onclick="toggleFavorite('${item.id}', event)" class="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm transition-colors flex items-center justify-center space-x-2">
+            <button onclick="toggleFavorite('${item.id}', event)" class="w-full py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition-colors flex items-center justify-center space-x-2">
               <svg class="w-4 h-4 ${isFav ? 'fill-rose-500 text-rose-500' : 'fill-none stroke-current'}" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
               <span>${isFav ? 'Guardado en Favoritos' : 'Guardar en Favoritos'}</span>
             </button>
@@ -449,20 +437,20 @@ function renderProfileView() {
   const myFavorites = AppState.items.filter(i => AppState.favorites.includes(i.id));
 
   container.innerHTML = myPosts.map(item => `
-    <div class="flex items-center justify-between p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-colors">
+    <div class="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-200/80 hover:border-indigo-300 shadow-sm transition-all">
       <div class="flex items-center space-x-4">
-        <img src="${item.images[0]}" class="w-14 h-14 rounded-lg object-cover">
+        <img src="${item.images[0]}" class="w-14 h-14 rounded-xl object-cover">
         <div>
-          <h4 class="font-bold text-white text-sm">${item.title}</h4>
-          <div class="flex items-center space-x-2 text-xs text-slate-400 mt-1">
-            <span class="text-emerald-400">● ${item.status}</span>
+          <h4 class="font-bold text-slate-800 text-sm">${item.title}</h4>
+          <div class="flex items-center space-x-2 text-xs text-slate-500 mt-1">
+            <span class="text-emerald-600 font-semibold">● ${item.status}</span>
             <span>&bull;</span>
-            <span>Bs ${item.price}</span>
+            <span class="font-bold text-slate-700">Bs ${item.price}</span>
           </div>
         </div>
       </div>
       <div class="flex items-center space-x-2">
-        <button onclick="navigateTo('detail', '${item.id}')" class="px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-700">Ver</button>
+        <button onclick="navigateTo('detail', '${item.id}')" class="px-3.5 py-1.5 rounded-xl bg-slate-100 text-xs font-bold text-slate-700 hover:bg-slate-200">Ver</button>
       </div>
     </div>
   `).join('');
@@ -470,18 +458,18 @@ function renderProfileView() {
   const favContainer = document.getElementById('profile-favorites-container');
   if (favContainer) {
     if (myFavorites.length === 0) {
-      favContainer.innerHTML = '<p class="text-xs text-slate-500 py-4">Aún no tienes favoritos guardados.</p>';
+      favContainer.innerHTML = '<p class="text-xs text-slate-400 py-4">Aún no tienes favoritos guardados.</p>';
     } else {
       favContainer.innerHTML = myFavorites.map(item => `
-        <div onclick="navigateTo('detail', '${item.id}')" class="cursor-pointer flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700">
+        <div onclick="navigateTo('detail', '${item.id}')" class="cursor-pointer flex items-center justify-between p-3.5 rounded-2xl bg-white border border-slate-200/80 hover:border-indigo-300 shadow-sm">
           <div class="flex items-center space-x-3">
-            <img src="${item.images[0]}" class="w-10 h-10 rounded-lg object-cover">
+            <img src="${item.images[0]}" class="w-11 h-11 rounded-xl object-cover">
             <div>
-              <p class="text-xs font-bold text-white truncate max-w-[180px]">${item.title}</p>
-              <p class="text-[11px] text-emerald-400">Bs ${item.price}</p>
+              <p class="text-xs font-bold text-slate-800 truncate max-w-[180px]">${item.title}</p>
+              <p class="text-[11px] font-bold text-indigo-600">Bs ${item.price}</p>
             </div>
           </div>
-          <button onclick="toggleFavorite('${item.id}', event)" class="text-rose-500 hover:text-rose-400">
+          <button onclick="toggleFavorite('${item.id}', event)" class="text-rose-500 hover:text-rose-600 p-1">
             <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
           </button>
         </div>
@@ -496,21 +484,21 @@ function renderAdminView() {
   if (!container) return;
 
   container.innerHTML = AppState.items.map(item => `
-    <tr class="border-b border-slate-800/80 hover:bg-slate-900/40 text-xs">
-      <td class="py-3 px-4 flex items-center space-x-3">
-        <img src="${item.images[0]}" class="w-8 h-8 rounded-md object-cover">
-        <span class="font-medium text-white truncate max-w-xs">${item.title}</span>
+    <tr class="border-b border-slate-100 hover:bg-indigo-50/40 text-xs transition-colors">
+      <td class="py-3.5 px-4 flex items-center space-x-3">
+        <img src="${item.images[0]}" class="w-9 h-9 rounded-lg object-cover">
+        <span class="font-bold text-slate-800 truncate max-w-xs">${item.title}</span>
       </td>
-      <td class="py-3 px-4 text-slate-300">${item.type === 'trabajo' ? 'Trabajo' : 'Servicio'}</td>
-      <td class="py-3 px-4 text-slate-400">${item.location}</td>
-      <td class="py-3 px-4">
-        <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${item.status === 'Disponible' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}">
-          ${item.status}
+      <td class="py-3.5 px-4 text-slate-600 font-medium">${item.type === 'trabajo' ? 'Trabajo' : 'Servicio'}</td>
+      <td class="py-3.5 px-4 text-slate-500">${item.location}</td>
+      <td class="py-3.5 px-4">
+        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${item.status === 'Disponible' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">
+          ● ${item.status}
         </span>
       </td>
-      <td class="py-3 px-4 text-right space-x-2">
-        <button onclick="navigateTo('detail', '${item.id}')" class="px-2 py-1 rounded bg-slate-800 text-slate-300 hover:bg-slate-700">Ver</button>
-        <button onclick="deleteAdminItem('${item.id}')" class="px-2 py-1 rounded bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/20">Eliminar</button>
+      <td class="py-3.5 px-4 text-right space-x-2">
+        <button onclick="navigateTo('detail', '${item.id}')" class="px-2.5 py-1 rounded-lg bg-slate-100 font-semibold text-slate-700 hover:bg-slate-200">Ver</button>
+        <button onclick="deleteAdminItem('${item.id}')" class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 font-semibold">Eliminar</button>
       </td>
     </tr>
   `).join('');
@@ -524,10 +512,6 @@ function deleteAdminItem(id) {
     renderHomeFeatured();
   }
 }
-
-// =========================================================
-// GESTIÓN DE PUBLICACIÓN DE TRABAJOS Y SERVICIOS
-// =========================================================
 
 function handleJobSubmit(e) {
   e.preventDefault();
@@ -608,10 +592,6 @@ function handleServiceSubmit(e) {
   navigateTo('detail', newItem.id);
 }
 
-// =========================================================
-// CONTACT MODAL
-// =========================================================
-
 function openContactModal(name, phone, title) {
   const modal = document.getElementById('contact-modal');
   if (!modal) return;
@@ -630,7 +610,6 @@ function closeContactModal() {
   if (modal) modal.classList.add('hidden');
 }
 
-// Inicialización
 document.addEventListener('DOMContentLoaded', () => {
   renderHomeFeatured();
   
