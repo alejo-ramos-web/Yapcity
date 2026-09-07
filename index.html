@@ -1,113 +1,545 @@
-﻿<!DOCTYPE html>
-<html lang="es">
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-950">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Yapcity - Conexión Completa</title>
+  <title>Yapcity - Conecta, muestra y encuentra</title>
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #020617; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
-  <!-- Header -->
-  <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur px-6 py-4 flex items-center justify-between">
-    <div class="flex items-center space-x-3">
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center font-extrabold text-white text-lg shadow-lg shadow-emerald-500/20">
-        Y
+<body class="min-h-full flex flex-col bg-slate-950 text-slate-100 selection:bg-emerald-500 selection:text-slate-950">
+
+  <!-- ========================================================= -->
+  <!-- NAVBAR PRINCIPAL (Pantalla 1)                             -->
+  <!-- ========================================================= -->
+  <header class="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <!-- Logo Yapcity -->
+      <div onclick="navigateTo('home')" class="cursor-pointer flex items-center space-x-2.5 flex-shrink-0">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center font-black text-slate-950 text-xl shadow-lg shadow-emerald-500/20">
+          Y
+        </div>
+        <div class="flex flex-col">
+          <span class="text-xl font-extrabold tracking-tight text-white leading-none">YAPCITY</span>
+          <span class="text-[10px] text-slate-400 tracking-wider">MUESTRA & ENCUENTRA</span>
+        </div>
       </div>
-      <span class="text-xl font-bold tracking-tight">Yapcity</span>
-    </div>
-    <div class="flex items-center space-x-2 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-      <span>Producción Online</span>
+
+      <!-- Links Centrales -->
+      <nav class="hidden md:flex items-center space-x-1 text-sm font-medium text-slate-300">
+        <button onclick="navigateTo('home')" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-900 transition-colors">Inicio</button>
+        <button onclick="navigateTo('explore', 'trabajos')" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-900 transition-colors">Explorar</button>
+        <button onclick="navigateTo('explore', 'servicios')" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-900 transition-colors">Servicios</button>
+        <button onclick="navigateTo('post-job')" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-900 transition-colors">Publicar</button>
+        <button onclick="navigateTo('admin')" class="px-3 py-1.5 rounded-lg hover:text-emerald-400 hover:bg-slate-900 transition-colors text-slate-400 flex items-center space-x-1">
+          <span>Admin</span>
+        </button>
+      </nav>
+
+      <!-- Botones de Usuario / Auth -->
+      <div class="flex items-center space-x-2.5">
+        <button onclick="navigateTo('profile')" class="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300 hover:border-slate-700 transition-colors">
+          <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=100&q=80" class="w-5 h-5 rounded-full object-cover">
+          <span>Mi perfil</span>
+        </button>
+        <button onclick="navigateTo('login')" class="px-3.5 py-1.5 text-xs font-semibold text-slate-300 hover:text-white transition-colors">
+          Iniciar sesión
+        </button>
+        <button onclick="navigateTo('register')" class="px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 text-xs font-bold shadow-md shadow-emerald-500/20 transition-all">
+          Crear cuenta
+        </button>
+      </div>
     </div>
   </header>
 
-  <!-- Hero Section -->
-  <main class="flex-1 flex items-center justify-center px-6 py-12">
-    <div class="max-w-2xl w-full text-center space-y-8">
-      <div class="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-slate-800/80 border border-slate-700 text-slate-300 text-xs sm:text-sm">
-        <span>✨ Ecosistema 100% Vinculado</span>
+  <!-- ========================================================= -->
+  <!-- VISTA 1: PÁGINA DE INICIO (HOME)                          -->
+  <!-- ========================================================= -->
+  <main id="view-home" class="app-view flex-1">
+    <!-- Hero Section -->
+    <section class="relative overflow-hidden pt-12 pb-20 px-4 sm:px-6 lg:px-8 border-b border-slate-900 bg-gradient-to-b from-slate-900/40 to-transparent">
+      <div class="max-w-4xl mx-auto text-center space-y-6">
+        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+          <span>🇧🇴 Plataforma de Oportunidades en Bolivia</span>
+        </div>
+
+        <h1 class="text-4xl sm:text-6xl font-black tracking-tight text-white leading-tight">
+          Muestra lo que haces.<br>
+          <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
+            Encuentra lo que necesitas.
+          </span>
+        </h1>
+
+        <p class="text-slate-400 text-base sm:text-lg max-w-2xl mx-auto">
+          Trabajos, servicios y oportunidades en un solo lugar. Conectamos talento boliviano con personas y empresas.
+        </p>
+
+        <!-- Buscador Central -->
+        <div class="max-w-2xl mx-auto pt-2">
+          <div class="relative flex items-center shadow-2xl shadow-emerald-500/5 rounded-2xl bg-slate-900 border border-slate-700/80 p-2">
+            <div class="pl-3 pr-2 text-slate-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </div>
+            <input id="home-search-input" type="text" placeholder="¿Qué estás buscando? (ej. diseño, reparación, carpintería...)" class="w-full bg-transparent border-none text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0">
+            <button onclick="AppState.exploreFilter.query = document.getElementById('home-search-input').value; navigateTo('explore', 'trabajos')" class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 transition-all flex-shrink-0">
+              Buscar
+            </button>
+          </div>
+
+          <!-- Botones de Acción Rápida -->
+          <div class="flex items-center justify-center space-x-4 pt-5 text-sm">
+            <button onclick="navigateTo('explore', 'trabajos')" class="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold border border-slate-800 transition-colors flex items-center space-x-2">
+              <span>💼 Explorar trabajos</span>
+            </button>
+            <button onclick="navigateTo('explore', 'servicios')" class="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold border border-slate-800 transition-colors flex items-center space-x-2">
+              <span>🛠️ Ver servicios</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sección Trabajos Destacados -->
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <h2 class="text-2xl font-black text-white">Trabajos destacados</h2>
+          <p class="text-xs text-slate-400 mt-1">Oportunidades recientes verificadas en tu ciudad</p>
+        </div>
+        <button onclick="navigateTo('explore', 'trabajos')" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center space-x-1">
+          <span>Ver todos</span>
+          <span>&rarr;</span>
+        </button>
       </div>
 
-      <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight bg-gradient-to-b from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
-        Yapcity está listo
-      </h1>
+      <!-- Grid de 4 Cards Destacadas -->
+      <div id="home-featured-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+    </section>
+  </main>
 
-      <p class="text-slate-400 text-sm sm:text-base leading-relaxed max-w-lg mx-auto">
-        Repositorio en <strong>GitHub</strong>, despliegue continuo en <strong>Vercel</strong> y base de datos en <strong>Supabase</strong> conectados correctamente.
-      </p>
+  <!-- ========================================================= -->
+  <!-- VISTA 2: INICIAR SESIÓN                                   -->
+  <!-- ========================================================= -->
+  <main id="view-login" class="app-view hidden flex-1 flex items-center justify-center px-4 py-12">
+    <div class="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-8 space-y-6 shadow-2xl">
+      <div class="text-center space-y-2">
+        <div class="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center font-black text-slate-950 text-2xl shadow-lg shadow-emerald-500/20">
+          Y
+        </div>
+        <h2 class="text-2xl font-black text-white">Iniciar sesión</h2>
+        <p class="text-xs text-slate-400">Ingresa a tu cuenta para continuar en Yapcity</p>
+      </div>
 
-      <!-- Status Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 text-left">
-        <!-- GitHub Card -->
-        <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-sm flex flex-col justify-between space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-medium text-slate-400">Control de versión</span>
-            <span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">Conectado</span>
+      <form onsubmit="event.preventDefault(); alert('Sesión iniciada correctamente'); navigateTo('home');" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Correo electrónico</label>
+          <input type="email" required placeholder="tu@email.com" class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-xs font-semibold text-slate-300">Contraseña</label>
+            <a href="#" onclick="alert('Enlace de recuperación enviado.');" class="text-[11px] text-emerald-400 hover:underline">¿Olvidaste tu contraseña?</a>
+          </div>
+          <input type="password" required placeholder="••••••••" class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <div class="flex items-center text-xs text-slate-400">
+          <input type="checkbox" id="remember-me" class="rounded bg-slate-950 border-slate-800 text-emerald-500 focus:ring-0 mr-2">
+          <label for="remember-me">Recordar sesión</label>
+        </div>
+
+        <button type="submit" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shadow-md shadow-emerald-500/20 transition-all">
+          Iniciar sesión
+        </button>
+      </form>
+
+      <div class="text-center text-xs text-slate-400">
+        <span>¿No tienes una cuenta? </span>
+        <button onclick="navigateTo('register')" class="text-emerald-400 font-semibold hover:underline">Crear cuenta</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ========================================================= -->
+  <!-- VISTA 3: CREAR CUENTA                                     -->
+  <!-- ========================================================= -->
+  <main id="view-register" class="app-view hidden flex-1 flex items-center justify-center px-4 py-12">
+    <div class="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-8 space-y-6 shadow-2xl">
+      <div class="text-center space-y-2">
+        <div class="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center font-black text-slate-950 text-2xl shadow-lg shadow-emerald-500/20">
+          Y
+        </div>
+        <h2 class="text-2xl font-black text-white">Crear cuenta</h2>
+        <p class="text-xs text-slate-400">Regístrate y empieza a compartir en Yapcity</p>
+      </div>
+
+      <form onsubmit="event.preventDefault(); alert('¡Cuenta creada con éxito!'); navigateTo('home');" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Nombre completo</label>
+          <input type="text" required placeholder="Tu nombre" class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Correo electrónico</label>
+          <input type="email" required placeholder="tu@email.com" class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Contraseña</label>
+          <input type="password" required placeholder="••••••••" class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Tipo de usuario</label>
+          <select class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-emerald-500">
+            <option value="usuario">Usuario (Busco contratar o solicitar trabajos)</option>
+            <option value="proveedor">Proveedor (Ofrezco mis servicios o habilidades)</option>
+          </select>
+        </div>
+
+        <button type="submit" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shadow-md shadow-emerald-500/20 transition-all">
+          Registrarse
+        </button>
+      </form>
+
+      <div class="text-center text-xs text-slate-400">
+        <span>¿Ya tienes una cuenta? </span>
+        <button onclick="navigateTo('login')" class="text-emerald-400 font-semibold hover:underline">Iniciar sesión</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ========================================================= -->
+  <!-- VISTA 4: EXPLORAR TRABAJOS Y SERVICIOS                    -->
+  <!-- ========================================================= -->
+  <main id="view-explore" class="app-view hidden flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+    <div class="space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-black text-white">Explorar</h1>
+          <p class="text-xs text-slate-400 mt-0.5">Encuentra trabajos publicados o contrata servicios profesionales</p>
+        </div>
+        <div class="flex items-center p-1 bg-slate-900 border border-slate-800 rounded-xl">
+          <button id="tab-trabajos" onclick="AppState.exploreTab = 'trabajos'; renderExploreView()" class="px-5 py-2 font-semibold text-sm rounded-lg bg-emerald-500 text-slate-950 shadow-md">Trabajos</button>
+          <button id="tab-servicios" onclick="AppState.exploreTab = 'servicios'; renderExploreView()" class="px-5 py-2 font-semibold text-sm rounded-lg text-slate-400 hover:text-white">Servicios</button>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Buscar</label>
+          <input oninput="AppState.exploreFilter.query = this.value; renderExploreView()" type="text" placeholder="Palabra clave..." class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-600 focus:border-emerald-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Categoría</label>
+          <select onchange="AppState.exploreFilter.category = this.value; renderExploreView()" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-emerald-500 focus:outline-none">
+            <option value="">Todas las categorías</option>
+            <option value="Diseño gráfico">Diseño gráfico</option>
+            <option value="Carpintería">Carpintería</option>
+            <option value="Edición de video">Edición de video</option>
+            <option value="Pintura de interiores">Pintura de interiores</option>
+            <option value="Construcción">Construcción</option>
+            <option value="Clases particulares">Clases particulares</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Ubicación</label>
+          <select onchange="AppState.exploreFilter.location = this.value; renderExploreView()" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-emerald-500 focus:outline-none">
+            <option value="">Toda Bolivia</option>
+            <option value="Santa Cruz">Santa Cruz</option>
+            <option value="La Paz">La Paz</option>
+            <option value="Cochabamba">Cochabamba</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Estado</label>
+          <select onchange="AppState.exploreFilter.status = this.value; renderExploreView()" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-emerald-500 focus:outline-none">
+            <option value="">Todos los estados</option>
+            <option value="Disponible">Disponible</option>
+            <option value="En proceso">En proceso</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Grid Resultados -->
+      <div id="explore-results-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-2"></div>
+    </div>
+  </main>
+
+  <!-- ========================================================= -->
+  <!-- VISTA 5: PUBLICAR TRABAJO                                 -->
+  <!-- ========================================================= -->
+  <main id="view-post-job" class="app-view hidden flex-1 max-w-2xl mx-auto w-full px-4 py-10">
+    <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
+      <div>
+        <div class="flex items-center space-x-2 text-xs text-emerald-400 font-semibold mb-1">
+          <span>💼 Formulario de Solicitud</span>
+        </div>
+        <h2 class="text-2xl font-black text-white">Publicar un trabajo</h2>
+        <p class="text-xs text-slate-400">Describe el trabajo que necesitas realizar y recibe propuestas</p>
+      </div>
+
+      <form onsubmit="handleJobSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Título del trabajo *</label>
+          <input id="job-title" type="text" required placeholder="Ej. Diseño de logotipo para cafetería" class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:border-emerald-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Descripción *</label>
+          <textarea id="job-desc" required rows="4" placeholder="Describe detalladamente qué necesitas..." class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:border-emerald-500 focus:outline-none"></textarea>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Categoría *</label>
+            <select id="job-category" required class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:border-emerald-500 focus:outline-none">
+              <option value="Diseño gráfico">Diseño gráfico</option>
+              <option value="Carpintería">Carpintería</option>
+              <option value="Edición de video">Edición de video</option>
+              <option value="Pintura de interiores">Pintura de interiores</option>
+              <option value="Construcción">Construcción</option>
+              <option value="Clases particulares">Clases particulares</option>
+            </select>
           </div>
           <div>
-            <p class="text-sm font-bold text-white">GitHub</p>
-            <p class="text-xs text-slate-400 truncate">alejo-ramos-web/Yapcity</p>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Ubicación *</label>
+            <select id="job-location" required class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:border-emerald-500 focus:outline-none">
+              <option value="Santa Cruz">Santa Cruz</option>
+              <option value="La Paz">La Paz</option>
+              <option value="Cochabamba">Cochabamba</option>
+            </select>
           </div>
         </div>
 
-        <!-- Vercel Card -->
-        <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-sm flex flex-col justify-between space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-medium text-slate-400">Hosting & CI/CD</span>
-            <span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">En vivo</span>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Presupuesto en Bs (opcional)</label>
+            <input id="job-price" type="number" placeholder="Ej. 250" class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:border-emerald-500 focus:outline-none">
           </div>
           <div>
-            <p class="text-sm font-bold text-white">Vercel</p>
-            <p class="text-xs text-slate-400">yapcity.vercel.app</p>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Estado</label>
+            <select id="job-status" class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:border-emerald-500 focus:outline-none">
+              <option value="Disponible">Disponible</option>
+              <option value="En proceso">En proceso</option>
+            </select>
           </div>
         </div>
 
-        <!-- Supabase Card -->
-        <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-sm flex flex-col justify-between space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-medium text-slate-400">Base de datos</span>
-            <span id=\"supabase-badge\" class=\"text-[11px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold\">Verificando...</span>
+        <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-sm shadow-lg shadow-emerald-500/20 transition-all">
+          Publicar trabajo
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <!-- ========================================================= -->
+  <!-- VISTA 6: PUBLICAR SERVICIO                                -->
+  <!-- ========================================================= -->
+  <main id="view-post-service" class="app-view hidden flex-1 max-w-2xl mx-auto w-full px-4 py-10">
+    <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
+      <div>
+        <div class="flex items-center space-x-2 text-xs text-teal-400 font-semibold mb-1">
+          <span>🛠️ Perfil Proveedor</span>
+        </div>
+        <h2 class="text-2xl font-black text-white">Publicar un servicio</h2>
+        <p class="text-xs text-slate-400">Ofrece tus habilidades profesionales a clientes de todo el país</p>
+      </div>
+
+      <form onsubmit="handleServiceSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Nombre del servicio *</label>
+          <input id="service-title" type="text" required placeholder="Ej. Instalación de paneles y dry-wall" class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:border-emerald-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Descripción del servicio *</label>
+          <textarea id="service-desc" required rows="4" placeholder="Detalla tu experiencia, garantías y materiales..." class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:border-emerald-500 focus:outline-none"></textarea>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Categoría *</label>
+            <select id="service-category" required class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:border-emerald-500 focus:outline-none">
+              <option value="Construcción">Construcción</option>
+              <option value="Carpintería">Carpintería</option>
+              <option value="Diseño gráfico">Diseño gráfico</option>
+              <option value="Pintura de interiores">Pintura de interiores</option>
+              <option value="Edición de video">Edición de video</option>
+              <option value="Clases particulares">Clases particulares</option>
+            </select>
           </div>
           <div>
-            <p class="text-sm font-bold text-white">Supabase</p>
-            <p id=\"supabase-status\" class="text-xs text-slate-400">rvowmjsxuqjbflybkfpq</p>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Precio desde (Bs) *</label>
+            <input id="service-price" type="number" required placeholder="Ej. 100" class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:border-emerald-500 focus:outline-none">
           </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Ubicación</label>
+            <select id="service-location" class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:border-emerald-500 focus:outline-none">
+              <option value="Santa Cruz">Santa Cruz</option>
+              <option value="La Paz">La Paz</option>
+              <option value="Cochabamba">Cochabamba</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Disponibilidad</label>
+            <input type="text" value="Siempre disponible" class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:border-emerald-500 focus:outline-none">
+          </div>
+        </div>
+
+        <button type="submit" class="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold text-sm shadow-lg shadow-teal-500/20 transition-all">
+          Publicar servicio
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <!-- ========================================================= -->
+  <!-- VISTA 7: DETALLE DE PUBLICACIÓN                           -->
+  <!-- ========================================================= -->
+  <main id="view-detail" class="app-view hidden flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+    <div id="detail-container"></div>
+  </main>
+
+  <!-- ========================================================= -->
+  <!-- VISTA 8: MI PERFIL                                        -->
+  <!-- ========================================================= -->
+  <main id="view-profile" class="app-view hidden flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+    <div class="space-y-6">
+      <div class="relative rounded-3xl overflow-hidden bg-slate-900 border border-slate-800 shadow-xl">
+        <div class="h-32 bg-gradient-to-r from-emerald-600 via-teal-700 to-slate-900"></div>
+        <div class="px-6 pb-6 pt-0 relative flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div class="flex items-end space-x-4 -mt-12">
+            <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=250&q=80" class="w-24 h-24 rounded-2xl border-4 border-slate-900 object-cover shadow-lg">
+            <div class="space-y-1 mb-1">
+              <div class="flex items-center space-x-2">
+                <h2 class="text-xl font-bold text-white">María González</h2>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Usuario</span>
+              </div>
+              <p class="text-xs text-slate-400">maria@gmail.com &bull; 📍 Santa Cruz, Bolivia</p>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="alert('Ventana de edición de perfil');" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition-colors">
+              Editar perfil
+            </button>
+            <button onclick="navigateTo('post-job')" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold shadow-md shadow-emerald-500/20 transition-all">
+              + Nueva publicación
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 space-y-4">
+          <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Mis publicaciones activas</h3>
+          <div id="profile-items-container" class="space-y-3"></div>
+        </div>
+        <div class="space-y-4">
+          <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Favoritos guardados (❤️)</h3>
+          <div id="profile-favorites-container" class="space-y-2"></div>
         </div>
       </div>
     </div>
   </main>
 
-  <!-- Footer -->
-  <footer class="border-t border-slate-900 py-6 text-center text-xs text-slate-500">
-    Yapcity &bull; Proyecto configurado con GitHub, Vercel &amp; Supabase
+  <!-- ========================================================= -->
+  <!-- VISTA 9: PANEL ADMINISTRADOR                              -->
+  <!-- ========================================================= -->
+  <main id="view-admin" class="app-view hidden flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+    <div class="space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="text-xs font-semibold text-emerald-400">🛡️ Control & Moderación</span>
+          <h1 class="text-2xl font-black text-white">Panel Administrador</h1>
+        </div>
+        <div class="flex items-center space-x-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-xs text-slate-400">Sistema Operativo</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <p class="text-xs text-slate-400 font-medium">Usuarios Registrados</p>
+          <p class="text-2xl font-extrabold text-white mt-1">1,248</p>
+        </div>
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <p class="text-xs text-slate-400 font-medium">Publicaciones Totales</p>
+          <p class="text-2xl font-extrabold text-emerald-400 mt-1">384</p>
+        </div>
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <p class="text-xs text-slate-400 font-medium">Reportes Pendientes</p>
+          <p class="text-2xl font-extrabold text-amber-400 mt-1">0</p>
+        </div>
+      </div>
+
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
+        <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white">Gestión y Moderación de Publicaciones</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left">
+            <thead class="bg-slate-950 text-slate-400 text-[11px] uppercase tracking-wider">
+              <tr>
+                <th class="py-3 px-4">Título</th>
+                <th class="py-3 px-4">Tipo</th>
+                <th class="py-3 px-4">Ubicación</th>
+                <th class="py-3 px-4">Estado</th>
+                <th class="py-3 px-4 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="admin-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ========================================================= -->
+  <!-- MODAL DE CONTACTO RÁPIDO (WhatsApp / Teléfono)           -->
+  <!-- ========================================================= -->
+  <div id="contact-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+    <div class="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white">Contactar con el autor</h3>
+        <button onclick="closeContactModal()" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
+      </div>
+      <div>
+        <p class="text-xs text-slate-400">Publicación:</p>
+        <p id="modal-contact-title" class="text-sm font-semibold text-white truncate"></p>
+        <p class="text-xs text-slate-400 mt-2">Proveedor / Usuario:</p>
+        <p id="modal-contact-name" class="text-sm font-semibold text-emerald-400"></p>
+      </div>
+      <div class="space-y-2 pt-2">
+        <a id="modal-btn-wa" target="_blank" class="w-full py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center space-x-2 shadow-md shadow-emerald-500/20 transition-all">
+          <span>Abrir chat de WhatsApp</span>
+        </a>
+        <button onclick="closeContactModal()" class="w-full py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700 transition-colors">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer General -->
+  <footer class="mt-auto border-t border-slate-900 bg-slate-950 py-8 px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-500">
+    <p>Yapcity &copy; 2026 &bull; Conecta, muestra y encuentra &bull; Hecho para Bolivia</p>
   </footer>
 
-  <!-- Supabase Live Ping -->
-  <script>
-    const SUPABASE_URL = 'https://rvowmjsxuqjbflybkfpq.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_LcNkCL02cQqE5em5kp6fjA_fe5VoSBW';
-
-    async function checkSupabase() {
-      const badge = document.getElementById('supabase-badge');
-      const status = document.getElementById('supabase-status');
-      try {
-        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        // Ping simple auth session check
-        const { data, error } = await client.auth.getSession();
-        badge.className = 'text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold';
-        badge.textContent = 'Conectado';
-        status.textContent = 'API activa y respondiendo';
-      } catch (e) {
-        badge.className = 'text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold';
-        badge.textContent = 'Listo';
-      }
-    }
-    checkSupabase();
-  </script>
+  <!-- Script Principal de la Aplicación -->
+  <script src="app.js"></script>
 </body>
 </html>
