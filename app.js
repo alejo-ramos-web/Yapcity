@@ -1,31 +1,24 @@
-﻿// =========================================================
-// YAPCITY - CORE APPLICATION LOGIC & SUPABASE INTEGRATION
+// =========================================================
+// YAPCITY - SISTEMA INTEGRADO CON SUPABASE
 // =========================================================
 
 const SUPABASE_URL = 'https://rvowmjsxuqjbflybkfpq.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_LcNkCL02cQqE5em5kp6fjA_fe5VoSBW';
 
+// Inicializar cliente Supabase
 let supabase = null;
 if (window.supabase) {
   try {
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   } catch (err) {
-    console.warn('Supabase init warning:', err);
+    console.warn('Supabase init:', err);
   }
 }
 
-// Estado global de la aplicación
+// Estado reactivo global
 const AppState = {
   currentView: 'home',
-  currentUser: {
-    id: 'user-001',
-    name: 'María González',
-    email: 'maria@gmail.com',
-    role: 'usuario',
-    location: 'Santa Cruz, Bolivia',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=250&q=80',
-    phone: '+591 78945612'
-  },
+  currentUser: null, // Si es null, no hay sesión activa
   selectedItem: null,
   exploreTab: 'trabajos',
   exploreFilter: {
@@ -34,8 +27,9 @@ const AppState = {
     location: '',
     status: ''
   },
-  favorites: ['item-1', 'item-4'],
+  favorites: JSON.parse(localStorage.getItem('yapcity_favs') || '["item-1", "item-4"]'),
   
+  // Datos iniciales precargados (garantizan que la plataforma siempre muestre contenido)
   items: [
     {
       id: 'item-1',
@@ -59,8 +53,7 @@ const AppState = {
       },
       images: [
         'https://images.unsplash.com/photo-1572044162444-ad60f128bdea?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1626785774573-4b799315345d?auto=format&fit=crop&w=600&q=80',
-        'https://images.unsplash.com/photo-1600132806370-bf17e65e942f?auto=format&fit=crop&w=600&q=80'
+        'https://images.unsplash.com/photo-1626785774573-4b799315345d?auto=format&fit=crop&w=600&q=80'
       ]
     },
     {
@@ -187,6 +180,179 @@ const AppState = {
 };
 
 // =========================================================
+// GESTIÓN DE NOTIFICACIONES TOAST (ELEGANTE Y MODERNO)
+// =========================================================
+function showToast(title, message, type = 'success') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  const bgClass = type === 'success' ? 'bg-emerald-600 text-white' : type === 'error' ? 'bg-rose-600 text-white' : 'bg-indigo-600 text-white';
+  
+  toast.className = `p-4 rounded-2xl shadow-xl flex items-start space-x-3 transition-all transform duration-300 translate-y-2 opacity-0 ${bgClass}`;
+  toast.innerHTML = `
+    <div class="flex-1">
+      <h4 class="font-bold text-xs uppercase tracking-wider">${title}</h4>
+      <p class="text-xs opacity-90 mt-0.5">${message}</p>
+    </div>
+    <button onclick="this.parentElement.remove()" class="opacity-70 hover:opacity-100 text-sm font-bold">&times;</button>
+  `;
+
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.remove('translate-y-2', 'opacity-0');
+  }, 10);
+
+  setTimeout(() => {
+    toast.classList.add('opacity-0', 'translate-y-2');
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
+
+// =========================================================
+// INTEGRACIÓN SUPABASE: AUTENTICACIÓN (LOGIN, REGISTER, LOGOUT)
+// =========================================================
+
+async function handleRegisterSubmit(e) {
+  e.preventDefault();
+  const name = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const role = document.getElementById('reg-role').value;
+  const btn = document.getElementById('reg-btn');
+
+  if (password.length < 6) {
+    showToast('Contraseña corta', 'La contraseña debe tener mínimo 6 caracteres.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Registrando...';
+
+  try {
+    if (supabase) {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            nombre: name,
+            tipo_usuario: role
+          }
+        }
+      });
+
+      if (error) throw error;
+      showToast('¡Registro Exitoso!', 'Tu cuenta ha sido creada en Supabase.');
+    } else {
+      showToast('¡Registro Exitoso!', 'Bienvenido a Yapcity.');
+    }
+
+    AppState.currentUser = {
+      id: 'usr-' + Date.now(),
+      name,
+      email,
+      role,
+      location: 'Santa Cruz, Bolivia',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+      phone: '+591 70000000'
+    };
+
+    updateAuthUI();
+    navigateTo('home');
+  } catch (err) {
+    showToast('Error al registrarse', err.message || 'No se pudo completar el registro', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Registrarse';
+  }
+}
+
+async function handleLoginSubmit(e) {
+  e.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const btn = document.getElementById('login-btn');
+
+  btn.disabled = true;
+  btn.textContent = 'Verificando...';
+
+  try {
+    if (supabase) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+
+      const user = data.user;
+      AppState.currentUser = {
+        id: user.id,
+        name: user.user_metadata?.nombre || email.split('@')[0],
+        email: user.email,
+        role: user.user_metadata?.tipo_usuario || 'usuario',
+        location: 'Santa Cruz, Bolivia',
+        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
+        phone: '+591 78945612'
+      };
+
+      showToast('¡Bienvenido!', `Hola de nuevo, ${AppState.currentUser.name}`);
+    } else {
+      AppState.currentUser = {
+        id: 'usr-local',
+        name: email.split('@')[0],
+        email,
+        role: 'usuario',
+        location: 'Santa Cruz, Bolivia',
+        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
+        phone: '+591 78945612'
+      };
+      showToast('Sesión Iniciada', 'Has ingresado correctamente');
+    }
+
+    updateAuthUI();
+    navigateTo('home');
+  } catch (err) {
+    showToast('Error de acceso', err.message || 'Correo o contraseña incorrectos', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Iniciar sesión';
+  }
+}
+
+async function handleLogout() {
+  try {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+  } catch (e) {
+    console.warn(e);
+  }
+  AppState.currentUser = null;
+  updateAuthUI();
+  showToast('Sesión cerrada', 'Has salido de tu cuenta');
+  navigateTo('home');
+}
+
+function updateAuthUI() {
+  const loggedOutNav = document.getElementById('nav-logged-out');
+  const loggedInNav = document.getElementById('nav-logged-in');
+  const userAvatar = document.getElementById('nav-user-avatar');
+  const userName = document.getElementById('nav-user-name');
+
+  if (AppState.currentUser) {
+    if (loggedOutNav) loggedOutNav.classList.add('hidden');
+    if (loggedInNav) loggedInNav.classList.remove('hidden');
+    if (userAvatar) userAvatar.src = AppState.currentUser.avatar;
+    if (userName) userName.textContent = AppState.currentUser.name;
+  } else {
+    if (loggedOutNav) loggedOutNav.classList.remove('hidden');
+    if (loggedInNav) loggedInNav.classList.add('hidden');
+  }
+}
+
+// =========================================================
 // ROUTER & VIEW SWITCHING
 // =========================================================
 
@@ -220,16 +386,20 @@ function toggleFavorite(itemId, event) {
   const idx = AppState.favorites.indexOf(itemId);
   if (idx > -1) {
     AppState.favorites.splice(idx, 1);
+    showToast('Favoritos', 'Publicación eliminada de tus favoritos', 'info');
   } else {
     AppState.favorites.push(itemId);
+    showToast('Favoritos', 'Publicación guardada en tus favoritos (❤️)', 'success');
   }
+  localStorage.setItem('yapcity_favs', JSON.stringify(AppState.favorites));
+
   if (AppState.currentView === 'explore') renderExploreView();
   if (AppState.currentView === 'home') renderHomeFeatured();
   if (AppState.currentView === 'profile') renderProfileView();
   if (AppState.currentView === 'detail') renderDetailView();
 }
 
-// 1. Render Inicio / Trabajos Destacados (DISEÑO FRESCO Y ALEGRE)
+// 1. Render Inicio / Trabajos Destacados
 function renderHomeFeatured() {
   const container = document.getElementById('home-featured-grid');
   if (!container) return;
@@ -351,7 +521,6 @@ function renderDetailView() {
   const isFav = AppState.favorites.includes(item.id);
 
   container.innerHTML = `
-    <!-- Top Bar -->
     <div class="flex items-center justify-between pb-6 border-b border-slate-200">
       <button onclick="navigateTo('explore')" class="inline-flex items-center space-x-2 text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
@@ -362,7 +531,6 @@ function renderDetailView() {
       </span>
     </div>
 
-    <!-- Main Content Layout -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-6">
       <div class="lg:col-span-2 space-y-6">
         <div class="w-full h-80 sm:h-[420px] rounded-3xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
@@ -390,7 +558,6 @@ function renderDetailView() {
         </div>
       </div>
 
-      <!-- Lateral Info -->
       <div class="space-y-6">
         <div class="p-6 rounded-3xl bg-white border border-slate-200 space-y-5 shadow-lg">
           <div>
@@ -433,7 +600,26 @@ function renderProfileView() {
   const container = document.getElementById('profile-items-container');
   if (!container) return;
 
-  const myPosts = AppState.items.filter(i => i.author && i.author.name === 'Ana López');
+  const user = AppState.currentUser || {
+    id: 'user-default',
+    name: 'María González',
+    email: 'maria@gmail.com',
+    role: 'usuario',
+    location: 'Santa Cruz, Bolivia',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=250&q=80'
+  };
+
+  const nameEl = document.getElementById('profile-name');
+  const roleEl = document.getElementById('profile-role');
+  const detailsEl = document.getElementById('profile-details');
+  const avatarEl = document.getElementById('profile-avatar');
+
+  if (nameEl) nameEl.textContent = user.name;
+  if (roleEl) roleEl.textContent = user.role === 'proveedor' ? 'Proveedor' : 'Usuario';
+  if (detailsEl) detailsEl.textContent = `${user.email} • 📍 ${user.location}`;
+  if (avatarEl) avatarEl.src = user.avatar;
+
+  const myPosts = AppState.items.filter(i => (i.author && i.author.id === user.id) || (i.author && i.author.name === user.name) || i.author?.name === 'Ana López');
   const myFavorites = AppState.items.filter(i => AppState.favorites.includes(i.id));
 
   container.innerHTML = myPosts.map(item => `
@@ -510,20 +696,35 @@ function deleteAdminItem(id) {
     renderAdminView();
     renderExploreView();
     renderHomeFeatured();
+    showToast('Moderación', 'Publicación eliminada correctamente');
   }
 }
 
-function handleJobSubmit(e) {
+// =========================================================
+// PUBLICACIÓN DE TRABAJOS Y SERVICIOS
+// =========================================================
+
+async function handleJobSubmit(e) {
   e.preventDefault();
-  const title = document.getElementById('job-title').value;
-  const description = document.getElementById('job-desc').value;
+  const title = document.getElementById('job-title').value.trim();
+  const description = document.getElementById('job-desc').value.trim();
   const category = document.getElementById('job-category').value;
   const location = document.getElementById('job-location').value;
   const price = parseFloat(document.getElementById('job-price').value) || 0;
   const status = document.getElementById('job-status').value;
 
+  const author = AppState.currentUser || {
+    id: 'user-guest',
+    name: 'Usuario Yapcity',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+    phone: '+591 70000000',
+    verified: false,
+    rating: 5.0,
+    reviewsCount: 1
+  };
+
   const newItem = {
-    id: 'item-' + Date.now(),
+    id: 'job-' + Date.now(),
     type: 'trabajo',
     title,
     description,
@@ -533,36 +734,53 @@ function handleJobSubmit(e) {
     currency: 'Bs',
     status,
     date: 'Hoy',
-    author: {
-      id: AppState.currentUser.id,
-      name: AppState.currentUser.name,
-      verified: false,
-      rating: 5.0,
-      reviewsCount: 1,
-      avatar: AppState.currentUser.avatar,
-      phone: AppState.currentUser.phone
-    },
+    author,
     images: [
       'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80'
     ]
   };
 
+  try {
+    if (supabase && AppState.currentUser) {
+      await supabase.from('publicaciones').insert([{
+        usuario_id: AppState.currentUser.id,
+        titulo: title,
+        descripcion: description,
+        ubicacion: location,
+        precio: price,
+        estado: status
+      }]);
+    }
+  } catch (err) {
+    console.warn('Supabase DB push info:', err);
+  }
+
   AppState.items.unshift(newItem);
-  alert('¡Trabajo publicado con éxito!');
+  showToast('¡Trabajo Publicado!', 'Tu solicitud de trabajo ya está visible en el explorador');
   e.target.reset();
   navigateTo('detail', newItem.id);
 }
 
-function handleServiceSubmit(e) {
+async function handleServiceSubmit(e) {
   e.preventDefault();
-  const title = document.getElementById('service-title').value;
-  const description = document.getElementById('service-desc').value;
+  const title = document.getElementById('service-title').value.trim();
+  const description = document.getElementById('service-desc').value.trim();
   const category = document.getElementById('service-category').value;
   const location = document.getElementById('service-location').value;
   const price = parseFloat(document.getElementById('service-price').value) || 0;
 
+  const author = AppState.currentUser || {
+    id: 'prov-guest',
+    name: 'Proveedor Yapcity',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+    phone: '+591 70000000',
+    verified: true,
+    rating: 5.0,
+    reviewsCount: 1
+  };
+
   const newItem = {
-    id: 'item-' + Date.now(),
+    id: 'serv-' + Date.now(),
     type: 'servicio',
     title,
     description,
@@ -572,26 +790,36 @@ function handleServiceSubmit(e) {
     currency: 'Bs',
     status: 'Disponible',
     date: 'Hoy',
-    author: {
-      id: AppState.currentUser.id,
-      name: AppState.currentUser.name,
-      verified: true,
-      rating: 5.0,
-      reviewsCount: 1,
-      avatar: AppState.currentUser.avatar,
-      phone: AppState.currentUser.phone
-    },
+    author,
     images: [
       'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=1200&q=80'
     ]
   };
 
+  try {
+    if (supabase && AppState.currentUser) {
+      await supabase.from('servicios').insert([{
+        usuario_id: AppState.currentUser.id,
+        nombre: title,
+        descripcion: description,
+        precio_desde: price,
+        ubicacion: location,
+        disponibilidad: 'Siempre disponible'
+      }]);
+    }
+  } catch (err) {
+    console.warn('Supabase DB push info:', err);
+  }
+
   AppState.items.unshift(newItem);
-  alert('¡Servicio publicado con éxito!');
+  showToast('¡Servicio Publicado!', 'Tu servicio profesional ya está disponible para contratación');
   e.target.reset();
   navigateTo('detail', newItem.id);
 }
 
+// =========================================================
+// MODAL DE CONTACTO
+// =========================================================
 function openContactModal(name, phone, title) {
   const modal = document.getElementById('contact-modal');
   if (!modal) return;
@@ -610,9 +838,33 @@ function closeContactModal() {
   if (modal) modal.classList.add('hidden');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// =========================================================
+// INICIALIZACIÓN
+// =========================================================
+document.addEventListener('DOMContentLoaded', async () => {
   renderHomeFeatured();
   
+  if (supabase) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && session.user) {
+        const u = session.user;
+        AppState.currentUser = {
+          id: u.id,
+          name: u.user_metadata?.nombre || u.email.split('@')[0],
+          email: u.email,
+          role: u.user_metadata?.tipo_usuario || 'usuario',
+          location: 'Santa Cruz, Bolivia',
+          avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
+          phone: '+591 78945612'
+        };
+      }
+    } catch (e) {
+      console.warn('Session check:', e);
+    }
+  }
+  updateAuthUI();
+
   const homeSearch = document.getElementById('home-search-input');
   if (homeSearch) {
     homeSearch.addEventListener('keypress', (e) => {
