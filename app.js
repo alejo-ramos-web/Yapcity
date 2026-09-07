@@ -5,20 +5,20 @@
 const SUPABASE_URL = 'https://rvowmjsxuqjbflybkfpq.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_LcNkCL02cQqE5em5kp6fjA_fe5VoSBW';
 
-// Inicializar cliente Supabase
-let supabase = null;
-if (window.supabase) {
+// Inicializar cliente Supabase usando supabaseClient para evitar colisión con window.supabase
+let supabaseClient = null;
+if (window.supabase && typeof window.supabase.createClient === 'function') {
   try {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   } catch (err) {
-    console.warn('Supabase init:', err);
+    console.warn('Supabase init warning:', err);
   }
 }
 
 // Estado reactivo global
 const AppState = {
   currentView: 'home',
-  currentUser: null, // Si es null, no hay sesión activa
+  currentUser: null,
   selectedItem: null,
   exploreTab: 'trabajos',
   exploreFilter: {
@@ -29,7 +29,6 @@ const AppState = {
   },
   favorites: JSON.parse(localStorage.getItem('yapcity_favs') || '["item-1", "item-4"]'),
   
-  // Datos iniciales precargados (garantizan que la plataforma siempre muestre contenido)
   items: [
     {
       id: 'item-1',
@@ -179,9 +178,7 @@ const AppState = {
   ]
 };
 
-// =========================================================
-// GESTIÓN DE NOTIFICACIONES TOAST (ELEGANTE Y MODERNO)
-// =========================================================
+// Notificaciones Toast
 function showToast(title, message, type = 'success') {
   const container = document.getElementById('toast-container');
   if (!container) return;
@@ -209,153 +206,7 @@ function showToast(title, message, type = 'success') {
   }, 4000);
 }
 
-// =========================================================
-// INTEGRACIÓN SUPABASE: AUTENTICACIÓN (LOGIN, REGISTER, LOGOUT)
-// =========================================================
-
-async function handleRegisterSubmit(e) {
-  e.preventDefault();
-  const name = document.getElementById('reg-name').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-  const password = document.getElementById('reg-password').value;
-  const role = document.getElementById('reg-role').value;
-  const btn = document.getElementById('reg-btn');
-
-  if (password.length < 6) {
-    showToast('Contraseña corta', 'La contraseña debe tener mínimo 6 caracteres.', 'error');
-    return;
-  }
-
-  btn.disabled = true;
-  btn.textContent = 'Registrando...';
-
-  try {
-    if (supabase) {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            nombre: name,
-            tipo_usuario: role
-          }
-        }
-      });
-
-      if (error) throw error;
-      showToast('¡Registro Exitoso!', 'Tu cuenta ha sido creada en Supabase.');
-    } else {
-      showToast('¡Registro Exitoso!', 'Bienvenido a Yapcity.');
-    }
-
-    AppState.currentUser = {
-      id: 'usr-' + Date.now(),
-      name,
-      email,
-      role,
-      location: 'Santa Cruz, Bolivia',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
-      phone: '+591 70000000'
-    };
-
-    updateAuthUI();
-    navigateTo('home');
-  } catch (err) {
-    showToast('Error al registrarse', err.message || 'No se pudo completar el registro', 'error');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Registrarse';
-  }
-}
-
-async function handleLoginSubmit(e) {
-  e.preventDefault();
-  const email = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
-  const btn = document.getElementById('login-btn');
-
-  btn.disabled = true;
-  btn.textContent = 'Verificando...';
-
-  try {
-    if (supabase) {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) throw error;
-
-      const user = data.user;
-      AppState.currentUser = {
-        id: user.id,
-        name: user.user_metadata?.nombre || email.split('@')[0],
-        email: user.email,
-        role: user.user_metadata?.tipo_usuario || 'usuario',
-        location: 'Santa Cruz, Bolivia',
-        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
-        phone: '+591 78945612'
-      };
-
-      showToast('¡Bienvenido!', `Hola de nuevo, ${AppState.currentUser.name}`);
-    } else {
-      AppState.currentUser = {
-        id: 'usr-local',
-        name: email.split('@')[0],
-        email,
-        role: 'usuario',
-        location: 'Santa Cruz, Bolivia',
-        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
-        phone: '+591 78945612'
-      };
-      showToast('Sesión Iniciada', 'Has ingresado correctamente');
-    }
-
-    updateAuthUI();
-    navigateTo('home');
-  } catch (err) {
-    showToast('Error de acceso', err.message || 'Correo o contraseña incorrectos', 'error');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Iniciar sesión';
-  }
-}
-
-async function handleLogout() {
-  try {
-    if (supabase) {
-      await supabase.auth.signOut();
-    }
-  } catch (e) {
-    console.warn(e);
-  }
-  AppState.currentUser = null;
-  updateAuthUI();
-  showToast('Sesión cerrada', 'Has salido de tu cuenta');
-  navigateTo('home');
-}
-
-function updateAuthUI() {
-  const loggedOutNav = document.getElementById('nav-logged-out');
-  const loggedInNav = document.getElementById('nav-logged-in');
-  const userAvatar = document.getElementById('nav-user-avatar');
-  const userName = document.getElementById('nav-user-name');
-
-  if (AppState.currentUser) {
-    if (loggedOutNav) loggedOutNav.classList.add('hidden');
-    if (loggedInNav) loggedInNav.classList.remove('hidden');
-    if (userAvatar) userAvatar.src = AppState.currentUser.avatar;
-    if (userName) userName.textContent = AppState.currentUser.name;
-  } else {
-    if (loggedOutNav) loggedOutNav.classList.remove('hidden');
-    if (loggedInNav) loggedInNav.classList.add('hidden');
-  }
-}
-
-// =========================================================
-// ROUTER & VIEW SWITCHING
-// =========================================================
-
+// Navegación entre vistas
 function navigateTo(viewName, param = null) {
   AppState.currentView = viewName;
   if (param) {
@@ -399,7 +250,7 @@ function toggleFavorite(itemId, event) {
   if (AppState.currentView === 'detail') renderDetailView();
 }
 
-// 1. Render Inicio / Trabajos Destacados
+// 1. Render Inicio
 function renderHomeFeatured() {
   const container = document.getElementById('home-featured-grid');
   if (!container) return;
@@ -512,7 +363,7 @@ function renderExploreView() {
   `).join('');
 }
 
-// 7. Render Detalle de Publicación
+// 7. Render Detalle
 function renderDetailView() {
   const item = AppState.selectedItem || AppState.items[0];
   const container = document.getElementById('detail-container');
@@ -595,7 +446,7 @@ function renderDetailView() {
   `;
 }
 
-// 8. Render Mi Perfil
+// 8. Render Perfil
 function renderProfileView() {
   const container = document.getElementById('profile-items-container');
   if (!container) return;
@@ -664,7 +515,7 @@ function renderProfileView() {
   }
 }
 
-// 9. Render Panel Administrador
+// 9. Render Admin
 function renderAdminView() {
   const container = document.getElementById('admin-table-body');
   if (!container) return;
@@ -700,9 +551,145 @@ function deleteAdminItem(id) {
   }
 }
 
-// =========================================================
-// PUBLICACIÓN DE TRABAJOS Y SERVICIOS
-// =========================================================
+// Handlers de Formulario
+async function handleRegisterSubmit(e) {
+  e.preventDefault();
+  const name = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const role = document.getElementById('reg-role').value;
+  const btn = document.getElementById('reg-btn');
+
+  if (password.length < 6) {
+    showToast('Contraseña corta', 'La contraseña debe tener mínimo 6 caracteres.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Registrando...';
+
+  try {
+    if (supabaseClient) {
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            nombre: name,
+            tipo_usuario: role
+          }
+        }
+      });
+
+      if (error) throw error;
+      showToast('¡Registro Exitoso!', 'Tu cuenta ha sido creada en Supabase.');
+    } else {
+      showToast('¡Registro Exitoso!', 'Bienvenido a Yapcity.');
+    }
+
+    AppState.currentUser = {
+      id: 'usr-' + Date.now(),
+      name,
+      email,
+      role,
+      location: 'Santa Cruz, Bolivia',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+      phone: '+591 70000000'
+    };
+
+    updateAuthUI();
+    navigateTo('home');
+  } catch (err) {
+    showToast('Error al registrarse', err.message || 'No se pudo completar el registro', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Registrarse';
+  }
+}
+
+async function handleLoginSubmit(e) {
+  e.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const btn = document.getElementById('login-btn');
+
+  btn.disabled = true;
+  btn.textContent = 'Verificando...';
+
+  try {
+    if (supabaseClient) {
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+
+      const user = data.user;
+      AppState.currentUser = {
+        id: user.id,
+        name: user.user_metadata?.nombre || email.split('@')[0],
+        email: user.email,
+        role: user.user_metadata?.tipo_usuario || 'usuario',
+        location: 'Santa Cruz, Bolivia',
+        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
+        phone: '+591 78945612'
+      };
+
+      showToast('¡Bienvenido!', `Hola de nuevo, ${AppState.currentUser.name}`);
+    } else {
+      AppState.currentUser = {
+        id: 'usr-local',
+        name: email.split('@')[0],
+        email,
+        role: 'usuario',
+        location: 'Santa Cruz, Bolivia',
+        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
+        phone: '+591 78945612'
+      };
+      showToast('Sesión Iniciada', 'Has ingresado correctamente');
+    }
+
+    updateAuthUI();
+    navigateTo('home');
+  } catch (err) {
+    showToast('Error de acceso', err.message || 'Correo o contraseña incorrectos', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Iniciar sesión';
+  }
+}
+
+async function handleLogout() {
+  try {
+    if (supabaseClient) {
+      await supabaseClient.auth.signOut();
+    }
+  } catch (e) {
+    console.warn(e);
+  }
+  AppState.currentUser = null;
+  updateAuthUI();
+  showToast('Sesión cerrada', 'Has salido de tu cuenta');
+  navigateTo('home');
+}
+
+function updateAuthUI() {
+  const loggedOutNav = document.getElementById('nav-logged-out');
+  const loggedInNav = document.getElementById('nav-logged-in');
+  const userAvatar = document.getElementById('nav-user-avatar');
+  const userName = document.getElementById('nav-user-name');
+
+  if (AppState.currentUser) {
+    if (loggedOutNav) loggedOutNav.classList.add('hidden');
+    if (loggedInNav) loggedInNav.classList.remove('hidden');
+    if (userAvatar) userAvatar.src = AppState.currentUser.avatar;
+    if (userName) userName.textContent = AppState.currentUser.name;
+  } else {
+    if (loggedOutNav) loggedOutNav.classList.remove('hidden');
+    if (loggedInNav) loggedInNav.classList.add('hidden');
+  }
+}
 
 async function handleJobSubmit(e) {
   e.preventDefault();
@@ -741,8 +728,8 @@ async function handleJobSubmit(e) {
   };
 
   try {
-    if (supabase && AppState.currentUser) {
-      await supabase.from('publicaciones').insert([{
+    if (supabaseClient && AppState.currentUser) {
+      await supabaseClient.from('publicaciones').insert([{
         usuario_id: AppState.currentUser.id,
         titulo: title,
         descripcion: description,
@@ -797,8 +784,8 @@ async function handleServiceSubmit(e) {
   };
 
   try {
-    if (supabase && AppState.currentUser) {
-      await supabase.from('servicios').insert([{
+    if (supabaseClient && AppState.currentUser) {
+      await supabaseClient.from('servicios').insert([{
         usuario_id: AppState.currentUser.id,
         nombre: title,
         descripcion: description,
@@ -817,9 +804,6 @@ async function handleServiceSubmit(e) {
   navigateTo('detail', newItem.id);
 }
 
-// =========================================================
-// MODAL DE CONTACTO
-// =========================================================
 function openContactModal(name, phone, title) {
   const modal = document.getElementById('contact-modal');
   if (!modal) return;
@@ -838,15 +822,41 @@ function closeContactModal() {
   if (modal) modal.classList.add('hidden');
 }
 
-// =========================================================
-// INICIALIZACIÓN
-// =========================================================
+function toggleMobileMenu(forceState) {
+  const menu = document.getElementById('mobile-menu');
+  if (!menu) return;
+  if (typeof forceState === 'boolean') {
+    if (forceState) menu.classList.remove('hidden');
+    else menu.classList.add('hidden');
+  } else {
+    menu.classList.toggle('hidden');
+  }
+}
+
+// Exponer explícitamente al objeto window para que los eventos inline funcionen siempre
+window.AppState = AppState;
+window.navigateTo = navigateTo;
+window.toggleFavorite = toggleFavorite;
+window.showToast = showToast;
+window.handleRegisterSubmit = handleRegisterSubmit;
+window.handleLoginSubmit = handleLoginSubmit;
+window.handleLogout = handleLogout;
+window.handleJobSubmit = handleJobSubmit;
+window.handleServiceSubmit = handleServiceSubmit;
+window.openContactModal = openContactModal;
+window.closeContactModal = closeContactModal;
+window.renderExploreView = renderExploreView;
+window.renderAdminView = renderAdminView;
+window.deleteAdminItem = deleteAdminItem;
+window.toggleMobileMenu = toggleMobileMenu;
+
+// Inicialización
 document.addEventListener('DOMContentLoaded', async () => {
   renderHomeFeatured();
   
-  if (supabase) {
+  if (supabaseClient) {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await supabaseClient.auth.getSession();
       if (session && session.user) {
         const u = session.user;
         AppState.currentUser = {
