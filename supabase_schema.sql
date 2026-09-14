@@ -1,4 +1,4 @@
-﻿-- =========================================================
+-- =========================================================
 -- ESQUEMA COMPLETO DE BASE DE DATOS PARA YAPCITY (SUPABASE)
 -- =========================================================
 
@@ -22,12 +22,12 @@ CREATE TABLE IF NOT EXISTS public.usuarios (
     correo VARCHAR(255) NOT NULL,
     telefono VARCHAR(50),
     ubicacion VARCHAR(100) DEFAULT 'Santa Cruz',
-    tipo_usuario VARCHAR(20) DEFAULT 'usuario' CHECK (tipo_usuario IN ('usuario', 'proveedor', 'admin')),
+    tipo_usuario VARCHAR(20) DEFAULT 'cliente' CHECK (tipo_usuario IN ('cliente', 'proveedor', 'admin')),
     avatar_url TEXT DEFAULT 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
     creado_en TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- 4. Tabla de Publicaciones (Trabajos solicitados)
+-- 4. Tabla de Publicaciones (Trabajos o requerimientos solicitados)
 CREATE TABLE IF NOT EXISTS public.publicaciones (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     usuario_id UUID REFERENCES public.usuarios(id) ON DELETE CASCADE,
@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS public.favoritos (
 
 -- 8. Disparador automático para crear perfil cuando alguien se registra en Auth
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS \$\$
+RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.usuarios (id, nombre, apellido, correo, tipo_usuario)
   VALUES (
@@ -81,16 +81,27 @@ BEGIN
     COALESCE(NEW.raw_user_meta_data->>'nombre', 'Usuario'),
     COALESCE(NEW.raw_user_meta_data->>'apellido', ''),
     NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'tipo_usuario', 'usuario')
+    COALESCE(NEW.raw_user_meta_data->>'tipo_usuario', 'cliente')
   );
   RETURN NEW;
 END;
-\$\$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Función auxiliar para verificar si el usuario conectado es administrador
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.usuarios
+    WHERE id = auth.uid() AND tipo_usuario = 'admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 9. Políticas de Seguridad RLS (Row Level Security)
 ALTER TABLE public.categorias ENABLE ROW LEVEL SECURITY;
@@ -101,22 +112,51 @@ ALTER TABLE public.imagenes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.favoritos ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de lectura pública para todos
+DROP POLICY IF EXISTS "Categorías son públicas" ON public.categorias;
 CREATE POLICY "Categorías son públicas" ON public.categorias FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Perfiles públicos para lectura" ON public.usuarios;
 CREATE POLICY "Perfiles públicos para lectura" ON public.usuarios FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Publicaciones visibles para todos" ON public.publicaciones;
 CREATE POLICY "Publicaciones visibles para todos" ON public.publicaciones FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Servicios visibles para todos" ON public.servicios;
 CREATE POLICY "Servicios visibles para todos" ON public.servicios FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Imágenes visibles para todos" ON public.imagenes;
 CREATE POLICY "Imágenes visibles para todos" ON public.imagenes FOR SELECT USING (true);
 
 -- Políticas de escritura para usuarios autenticados
+DROP POLICY IF EXISTS "Usuarios pueden actualizar su propio perfil" ON public.usuarios;
 CREATE POLICY "Usuarios pueden actualizar su propio perfil" ON public.usuarios FOR UPDATE USING (auth.uid() = id);
+
+-- Publicaciones: Propietario o Administrador
+DROP POLICY IF EXISTS "Usuarios pueden crear publicaciones" ON public.publicaciones;
 CREATE POLICY "Usuarios pueden crear publicaciones" ON public.publicaciones FOR INSERT WITH CHECK (auth.uid() = usuario_id);
-CREATE POLICY "Usuarios pueden editar sus publicaciones" ON public.publicaciones FOR UPDATE USING (auth.uid() = usuario_id);
-CREATE POLICY "Usuarios pueden eliminar sus publicaciones" ON public.publicaciones FOR DELETE USING (auth.uid() = usuario_id);
 
-CREATE POLICY "Proveedores pueden crear servicios" ON public.servicios FOR INSERT WITH CHECK (auth.uid() = usuario_id);
-CREATE POLICY "Proveedores pueden editar sus servicios" ON public.servicios FOR UPDATE USING (auth.uid() = usuario_id);
-CREATE POLICY "Proveedores pueden eliminar sus servicios" ON public.servicios FOR DELETE USING (auth.uid() = usuario_id);
+DROP POLICY IF EXISTS "Usuarios pueden editar sus publicaciones" ON public.publicaciones;
+CREATE POLICY "Usuarios pueden editar sus publicaciones" ON public.publicaciones FOR UPDATE USING (auth.uid() = usuario_id OR public.is_admin());
 
+DROP POLICY IF EXISTS "Usuarios pueden eliminar sus publicaciones" ON public.publicaciones;
+CREATE POLICY "Usuarios pueden eliminar sus publicaciones" ON public.publicaciones FOR DELETE USING (auth.uid() = usuario_id OR public.is_admin());
+
+-- Servicios: Proveedores o Administrador
+DROP POLICY IF EXISTS "Proveedores pueden crear servicios" ON public.servicios;
+CREATE POLICY "Proveedores pueden crear servicios" ON public.servicios FOR INSERT WITH CHECK (
+  auth.uid() = usuario_id AND (
+    EXISTS (SELECT 1 FROM public.usuarios WHERE id = auth.uid() AND tipo_usuario IN ('proveedor', 'admin'))
+  )
+);
+
+DROP POLICY IF EXISTS "Proveedores pueden editar sus servicios" ON public.servicios;
+CREATE POLICY "Proveedores pueden editar sus servicios" ON public.servicios FOR UPDATE USING (auth.uid() = usuario_id OR public.is_admin());
+
+DROP POLICY IF EXISTS "Proveedores pueden eliminar sus servicios" ON public.servicios;
+CREATE POLICY "Proveedores pueden eliminar sus servicios" ON public.servicios FOR DELETE USING (auth.uid() = usuario_id OR public.is_admin());
+
+-- Favoritos
+DROP POLICY IF EXISTS "Usuarios pueden gestionar sus favoritos" ON public.favoritos;
 CREATE POLICY "Usuarios pueden gestionar sus favoritos" ON public.favoritos FOR ALL USING (auth.uid() = usuario_id);
 
 -- 10. Datos iniciales (Seed Data)
