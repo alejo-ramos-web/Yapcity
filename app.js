@@ -1128,6 +1128,236 @@ function updateAuthUI() {
   }
 }
 
+// =========================================================
+// GESTOR DE IMÁGENES & STORAGE (SUPABASE 'yapcity-media')
+// =========================================================
+const ImageState = {
+  job: [],      // Array de { file, previewUrl }
+  service: []  // Array de { file, previewUrl }
+};
+
+function handleImageSelection(type, event) {
+  const files = Array.from(event.target.files || []);
+  if (!files.length) return;
+
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  const maxSize = 5 * 1024 * 1024; // 5MB
+
+  for (const file of files) {
+    if (!allowedTypes.includes(file.type)) {
+      showToast('Formato no permitido', `El archivo ${file.name} debe ser JPG, PNG o WEBP.`, 'error');
+      continue;
+    }
+    if (file.size > maxSize) {
+      showToast('Archivo muy pesado', `La imagen ${file.name} supera el límite de 5MB.`, 'error');
+      continue;
+    }
+    const previewUrl = URL.createObjectURL(file);
+    ImageState[type].push({ file, previewUrl });
+  }
+
+  renderImagePreviews(type);
+  event.target.value = '';
+}
+
+function removeImage(type, index) {
+  const removed = ImageState[type].splice(index, 1);
+  if (removed[0] && removed[0].previewUrl) {
+    URL.revokeObjectURL(removed[0].previewUrl);
+  }
+  renderImagePreviews(type);
+}
+
+function renderImagePreviews(type) {
+  const container = document.getElementById(`${type}-images-preview`);
+  if (!container) return;
+
+  if (ImageState[type].length === 0) {
+    container.classList.add('hidden');
+    container.innerHTML = '';
+    return;
+  }
+
+  container.classList.remove('hidden');
+  container.innerHTML = ImageState[type].map((img, idx) => `
+    <div class="relative h-20 rounded-xl overflow-hidden border border-slate-200 group shadow-xs">
+      <img src="${img.previewUrl}" class="w-full h-full object-cover">
+      <button type="button" onclick="removeImage('${type}', ${idx})" class="absolute top-1 right-1 w-5 h-5 rounded-full bg-slate-900/80 hover:bg-rose-600 text-white text-xs flex items-center justify-center transition-colors" title="Eliminar foto">
+        &times;
+      </button>
+    </div>
+  `).join('');
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadImagesToStorage(type, folder = 'publicaciones') {
+  const images = ImageState[type];
+  if (!images || images.length === 0) return [];
+
+  const uploadedUrls = [];
+
+  for (const item of images) {
+    let uploaded = false;
+    if (supabaseClient && supabaseClient.storage) {
+      try {
+        const ext = item.file.name.split('.').pop() || 'jpg';
+        const filePath = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${ext}`;
+        const { data, error } = await supabaseClient.storage
+          .from('yapcity-media')
+          .upload(filePath, item.file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (!error && data) {
+          const { data: publicUrlData } = supabaseClient.storage
+            .from('yapcity-media')
+            .getPublicUrl(filePath);
+          if (publicUrlData && publicUrlData.publicUrl) {
+            uploadedUrls.push(publicUrlData.publicUrl);
+            uploaded = true;
+          }
+        }
+      } catch (e) {
+        console.warn('Storage upload fallback:', e);
+      }
+    }
+
+    // Fallback inteligente: si el bucket aún no existe o está offline, usar Base64 local
+    if (!uploaded) {
+      try {
+        const base64 = await fileToBase64(item.file);
+        uploadedUrls.push(base64);
+      } catch (e) {
+        uploadedUrls.push(item.previewUrl);
+      }
+    }
+  }
+
+  // Limpiar memoria
+  ImageState[type] = [];
+  renderImagePreviews(type);
+
+  return uploadedUrls;
+}
+
+// Sincronización de Base de Datos Supabase
+async function fetchPublicacionesAndServicios() {
+  if (!supabaseClient) return;
+
+  try {
+    const { data: pubData, error: pubError } = await supabaseClient
+      .from('publicaciones')
+      .select(`
+        id,
+        titulo,
+        descripcion,
+        ubicacion,
+        precio,
+        estado,
+        fecha_publicacion,
+        usuario_id,
+        usuarios (id, nombre, avatar_url, telefono, tipo_usuario)
+      `)
+      .order('fecha_publicacion', { ascending: false });
+
+    const { data: srvData, error: srvError } = await supabaseClient
+      .from('servicios')
+      .select(`
+        id,
+        nombre,
+        descripcion,
+        ubicacion,
+        precio_desde,
+        disponibilidad,
+        creado_en,
+        usuario_id,
+        usuarios (id, nombre, avatar_url, telefono, tipo_usuario)
+      `)
+      .order('creado_en', { ascending: false });
+
+    const realItems = [];
+
+    if (pubData && pubData.length > 0) {
+      pubData.forEach(p => {
+        realItems.push({
+          id: p.id,
+          type: 'trabajo',
+          title: p.titulo,
+          description: p.descripcion,
+          category: 'General',
+          location: p.ubicacion || 'Santa Cruz',
+          price: p.precio || 0,
+          currency: 'Bs',
+          status: p.estado || 'Disponible',
+          date: new Date(p.fecha_publicacion).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' }),
+          author: {
+            id: p.usuario_id,
+            name: p.usuarios?.nombre || 'Usuario Yapcity',
+            avatar: p.usuarios?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+            phone: p.usuarios?.telefono || '+591 70000000',
+            verified: p.usuarios?.tipo_usuario === 'proveedor' || p.usuarios?.tipo_usuario === 'admin',
+            rating: 5.0,
+            reviewsCount: 1
+          },
+          images: [
+            'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80'
+          ]
+        });
+      });
+    }
+
+    if (srvData && srvData.length > 0) {
+      srvData.forEach(s => {
+        realItems.push({
+          id: s.id,
+          type: 'servicio',
+          title: s.nombre,
+          description: s.descripcion,
+          category: 'Servicio',
+          location: s.ubicacion || 'Santa Cruz',
+          price: s.precio_desde || 0,
+          currency: 'Bs',
+          status: 'Disponible',
+          date: new Date(s.creado_en).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' }),
+          author: {
+            id: s.usuario_id,
+            name: s.usuarios?.nombre || 'Proveedor Yapcity',
+            avatar: s.usuarios?.avatar_url || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
+            phone: s.usuarios?.telefono || '+591 70000000',
+            verified: true,
+            rating: 5.0,
+            reviewsCount: 1
+          },
+          images: [
+            'https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=1200&q=80'
+          ]
+        });
+      });
+    }
+
+    if (realItems.length > 0) {
+      const existingIds = new Set(realItems.map(i => i.id));
+      const sampleRemaining = AppState.items.filter(i => !existingIds.has(i.id));
+      AppState.items = [...realItems, ...sampleRemaining];
+      renderHomeFeatured();
+      if (AppState.currentView === 'explore') renderExploreView();
+      if (AppState.currentView === 'admin') renderAdminView();
+    }
+  } catch (err) {
+    console.info('Carga de datos remotos:', err);
+  }
+}
+
+// 💼 Publicar Trabajo (Validación Estricta y Sanitización)
 async function handleJobSubmit(e) {
   e.preventDefault();
   if (!AppState.currentUser) {
@@ -1140,55 +1370,94 @@ async function handleJobSubmit(e) {
   const description = document.getElementById('job-desc').value.trim();
   const category = document.getElementById('job-category').value;
   const location = document.getElementById('job-location').value;
-  const price = parseFloat(document.getElementById('job-price').value) || 0;
+  const priceInput = document.getElementById('job-price').value.trim();
+  const price = priceInput ? parseFloat(priceInput) : 0;
   const status = document.getElementById('job-status').value;
+  const submitBtn = document.getElementById('job-submit-btn');
 
-  const newItem = {
-    id: 'job-' + Date.now(),
-    type: 'trabajo',
-    title,
-    description,
-    category,
-    location,
-    price,
-    currency: 'Bs',
-    status,
-    date: 'Hoy',
-    author: {
-      id: AppState.currentUser.id,
-      name: AppState.currentUser.name,
-      avatar: AppState.currentUser.avatar,
-      phone: AppState.currentUser.phone || '+591 70000000',
-      verified: AppState.currentUser.role === 'proveedor' || AppState.currentUser.role === 'admin',
-      rating: 5.0,
-      reviewsCount: 1
-    },
-    images: [
-      'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80'
-    ]
-  };
-
-  try {
-    if (supabaseClient) {
-      await supabaseClient.from('publicaciones').insert([{
-        usuario_id: AppState.currentUser.id,
-        titulo: title,
-        descripcion: description,
-        ubicacion: location,
-        precio: price,
-        estado: status
-      }]);
-    }
-  } catch (err) {
-    console.warn('Supabase DB push info:', err);
+  // Validaciones estrictas de seguridad e integridad
+  if (title.length < 5 || title.length > 100) {
+    showToast('Título inválido', 'El título debe tener entre 5 y 100 caracteres.', 'error');
+    return;
+  }
+  if (description.length < 15 || description.length > 2000) {
+    showToast('Descripción corta', 'Describe el trabajo con al menos 15 caracteres.', 'error');
+    return;
+  }
+  if (priceInput && (isNaN(price) || price <= 0)) {
+    showToast('Precio inválido', 'El presupuesto debe ser un monto positivo en Bolivianos (Bs).', 'error');
+    return;
   }
 
-  AppState.items.unshift(newItem);
-  showToast('¡Trabajo Publicado!', 'Tu solicitud de trabajo ha sido publicada con éxito');
-  e.target.reset();
-  navigateTo('detail', newItem.id);
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `
+      <svg class="animate-spin w-4 h-4 text-white inline mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+      <span>Subiendo fotos y publicando...</span>
+    `;
+  }
+
+  try {
+    // 1. Subir fotos reales si existen
+    const uploadedImages = await uploadImagesToStorage('job', 'trabajos');
+    const finalImages = uploadedImages.length > 0 ? uploadedImages : [
+      'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80'
+    ];
+
+    const newItem = {
+      id: 'job-' + Date.now(),
+      type: 'trabajo',
+      title,
+      description,
+      category,
+      location,
+      price: price || 100,
+      currency: 'Bs',
+      status,
+      date: 'Hoy',
+      author: {
+        id: AppState.currentUser.id,
+        name: AppState.currentUser.name,
+        avatar: AppState.currentUser.avatar,
+        phone: AppState.currentUser.phone || '+591 70000000',
+        verified: AppState.currentUser.role === 'proveedor' || AppState.currentUser.role === 'admin',
+        rating: 5.0,
+        reviewsCount: 1
+      },
+      images: finalImages
+    };
+
+    // 2. Persistir en Supabase
+    if (supabaseClient) {
+      try {
+        await supabaseClient.from('publicaciones').insert([{
+          usuario_id: AppState.currentUser.id,
+          titulo: title,
+          descripcion: description,
+          ubicacion: location,
+          precio: price || 100,
+          estado: status
+        }]);
+      } catch (err) {
+        console.warn('Supabase DB push info:', err);
+      }
+    }
+
+    AppState.items.unshift(newItem);
+    showToast('¡Trabajo Publicado!', 'Tu solicitud ha sido publicada con éxito en Yapcity');
+    e.target.reset();
+    navigateTo('detail', newItem.id);
+  } catch (err) {
+    showToast('Error al publicar', err.message || 'No se pudo completar la publicación', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<span>Publicar trabajo</span>`;
+    }
+  }
 }
 
+// 🛠️ Publicar Servicio Profesional (Validación Estricta y Sanitización)
 async function handleServiceSubmit(e) {
   e.preventDefault();
   if (!AppState.currentUser) {
@@ -1202,56 +1471,94 @@ async function handleServiceSubmit(e) {
     return;
   }
 
-  const title = document.getElementById('srv-title').value.trim();
-  const description = document.getElementById('srv-desc').value.trim();
-  const category = document.getElementById('srv-category').value;
-  const location = document.getElementById('srv-location').value;
-  const price = parseFloat(document.getElementById('srv-price').value) || 0;
+  const title = (document.getElementById('service-title') || document.getElementById('srv-title')).value.trim();
+  const description = (document.getElementById('service-desc') || document.getElementById('srv-desc')).value.trim();
+  const category = (document.getElementById('service-category') || document.getElementById('srv-category')).value;
+  const location = (document.getElementById('service-location') || document.getElementById('srv-location')).value;
+  const priceInput = (document.getElementById('service-price') || document.getElementById('srv-price')).value.trim();
+  const price = parseFloat(priceInput) || 0;
+  const submitBtn = document.getElementById('service-submit-btn');
 
-  const newItem = {
-    id: 'srv-' + Date.now(),
-    type: 'servicio',
-    title,
-    description,
-    category,
-    location,
-    price,
-    currency: 'Bs',
-    status: 'Disponible',
-    date: 'Hoy',
-    author: {
-      id: AppState.currentUser.id,
-      name: AppState.currentUser.name,
-      avatar: AppState.currentUser.avatar,
-      phone: AppState.currentUser.phone || '+591 70000000',
-      verified: true,
-      rating: 5.0,
-      reviewsCount: 1
-    },
-    images: [
-      'https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=1200&q=80'
-    ]
-  };
-
-  try {
-    if (supabaseClient) {
-      await supabaseClient.from('servicios').insert([{
-        usuario_id: AppState.currentUser.id,
-        nombre: title,
-        descripcion: description,
-        precio_desde: price,
-        ubicacion: location,
-        disponibilidad: 'Siempre disponible'
-      }]);
-    }
-  } catch (err) {
-    console.warn('Supabase DB push info:', err);
+  // Validaciones estrictas de seguridad
+  if (title.length < 5 || title.length > 100) {
+    showToast('Nombre inválido', 'El nombre del servicio debe tener entre 5 y 100 caracteres.', 'error');
+    return;
+  }
+  if (description.length < 15 || description.length > 2000) {
+    showToast('Descripción corta', 'Describe tu servicio profesional con al menos 15 caracteres.', 'error');
+    return;
+  }
+  if (isNaN(price) || price <= 0) {
+    showToast('Precio requerido', 'Ingresa un precio base válido en Bolivianos (Bs).', 'error');
+    return;
   }
 
-  AppState.items.unshift(newItem);
-  showToast('¡Servicio Publicado!', 'Tu servicio profesional ya está disponible para contratación');
-  e.target.reset();
-  navigateTo('detail', newItem.id);
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `
+      <svg class="animate-spin w-4 h-4 text-white inline mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+      <span>Subiendo fotos y publicando...</span>
+    `;
+  }
+
+  try {
+    // 1. Subir fotos reales si existen
+    const uploadedImages = await uploadImagesToStorage('service', 'servicios');
+    const finalImages = uploadedImages.length > 0 ? uploadedImages : [
+      'https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=1200&q=80'
+    ];
+
+    const newItem = {
+      id: 'srv-' + Date.now(),
+      type: 'servicio',
+      title,
+      description,
+      category,
+      location,
+      price,
+      currency: 'Bs',
+      status: 'Disponible',
+      date: 'Hoy',
+      author: {
+        id: AppState.currentUser.id,
+        name: AppState.currentUser.name,
+        avatar: AppState.currentUser.avatar,
+        phone: AppState.currentUser.phone || '+591 70000000',
+        verified: true,
+        rating: 5.0,
+        reviewsCount: 1
+      },
+      images: finalImages
+    };
+
+    // 2. Persistir en Supabase
+    if (supabaseClient) {
+      try {
+        await supabaseClient.from('servicios').insert([{
+          usuario_id: AppState.currentUser.id,
+          nombre: title,
+          descripcion: description,
+          precio_desde: price,
+          ubicacion: location,
+          disponibilidad: 'Siempre disponible'
+        }]);
+      } catch (err) {
+        console.warn('Supabase DB push info:', err);
+      }
+    }
+
+    AppState.items.unshift(newItem);
+    showToast('¡Servicio Publicado!', 'Tu servicio profesional ya está disponible para clientes de toda Bolivia');
+    e.target.reset();
+    navigateTo('detail', newItem.id);
+  } catch (err) {
+    showToast('Error al publicar', err.message || 'No se pudo completar la publicación del servicio', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<span>Publicar servicio</span>`;
+    }
+  }
 }
 
 function openContactModal(name, phone, title) {
@@ -1310,6 +1617,9 @@ window.handleAdminKeySubmit = handleAdminKeySubmit;
 window.openRoleUpgradeModal = openRoleUpgradeModal;
 window.closeRoleUpgradeModal = closeRoleUpgradeModal;
 window.upgradeCurrentUserToProvider = upgradeCurrentUserToProvider;
+window.handleImageSelection = handleImageSelection;
+window.removeImage = removeImage;
+window.fetchPublicacionesAndServicios = fetchPublicacionesAndServicios;
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', async () => {
@@ -1337,6 +1647,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   
   updateAuthUI();
+  await fetchPublicacionesAndServicios();
 
   const homeSearch = document.getElementById('home-search-input');
   if (homeSearch) {

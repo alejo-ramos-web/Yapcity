@@ -168,3 +168,35 @@ INSERT INTO public.categorias (nombre, descripcion) VALUES
 ('Construcción', 'Albañilería, remodelación de casas y obras civiles'),
 ('Clases particulares', 'Inglés, matemáticas y refuerzo escolar')
 ON CONFLICT (nombre) DO NOTHING;
+
+-- =========================================================
+-- 11. Configuración de Storage y Políticas RLS para 'yapcity-media'
+-- =========================================================
+
+-- Crear el bucket público 'yapcity-media' para fotos de trabajos y servicios
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('yapcity-media', 'yapcity-media', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Políticas de seguridad RLS para storage.objects
+DROP POLICY IF EXISTS "Imágenes de Yapcity son públicas para lectura" ON storage.objects;
+CREATE POLICY "Imágenes de Yapcity son públicas para lectura"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'yapcity-media');
+
+DROP POLICY IF EXISTS "Usuarios autenticados pueden subir imágenes a Yapcity" ON storage.objects;
+CREATE POLICY "Usuarios autenticados pueden subir imágenes a Yapcity"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'yapcity-media' 
+  AND auth.role() = 'authenticated'
+);
+
+DROP POLICY IF EXISTS "Propietarios o admins pueden eliminar imágenes de Yapcity" ON storage.objects;
+CREATE POLICY "Propietarios o admins pueden eliminar imágenes de Yapcity"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'yapcity-media' 
+  AND (auth.uid() = owner OR public.is_admin())
+);
+
