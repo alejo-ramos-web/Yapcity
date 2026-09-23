@@ -289,39 +289,55 @@
       </div>
 
       <!-- Filtros Modernos -->
-      <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
-        <div>
-          <label class="block text-[11px] font-bold text-slate-600 mb-1">Buscar</label>
-          <input oninput="AppState.exploreFilter.query = this.value; renderExploreView()" type="text" placeholder="Palabra clave..." class="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none">
+      <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 mb-1">Buscar</label>
+            <input oninput="AppState.exploreFilter.query = this.value; renderExploreView()" type="text" placeholder="Palabra clave..." class="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 mb-1">Categoría</label>
+            <select onchange="AppState.exploreFilter.category = this.value; renderExploreView()" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 font-medium focus:border-indigo-500 focus:bg-white focus:outline-none">
+              <option value="">Todas las categorías</option>
+              <option value="Diseño gráfico">Diseño gráfico</option>
+              <option value="Carpintería">Carpintería</option>
+              <option value="Edición de video">Edición de video</option>
+              <option value="Pintura de interiores">Pintura de interiores</option>
+              <option value="Construcción">Construcción</option>
+              <option value="Clases particulares">Clases particulares</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 mb-1">Ubicación</label>
+            <select onchange="AppState.exploreFilter.location = this.value; renderExploreView()" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 font-medium focus:border-indigo-500 focus:bg-white focus:outline-none">
+              <option value="">Toda Bolivia</option>
+              <option value="Santa Cruz">Santa Cruz</option>
+              <option value="La Paz">La Paz</option>
+              <option value="Cochabamba">Cochabamba</option>
+              <option value="Chuquisaca">Chuquisaca (Sucre)</option>
+              <option value="Tarija">Tarija</option>
+              <option value="Oruro">Oruro</option>
+              <option value="Potosí">Potosí</option>
+              <option value="Beni">Beni</option>
+              <option value="Pando">Pando</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 mb-1">Estado</label>
+            <select onchange="AppState.exploreFilter.status = this.value; renderExploreView()" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 font-medium focus:border-indigo-500 focus:bg-white focus:outline-none">
+              <option value="">Todos los estados</option>
+              <option value="Disponible">Disponible</option>
+              <option value="En proceso">En proceso</option>
+            </select>
+          </div>
         </div>
-        <div>
-          <label class="block text-[11px] font-bold text-slate-600 mb-1">Categoría</label>
-          <select onchange="AppState.exploreFilter.category = this.value; renderExploreView()" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 font-medium focus:border-indigo-500 focus:bg-white focus:outline-none">
-            <option value="">Todas las categorías</option>
-            <option value="Diseño gráfico">Diseño gráfico</option>
-            <option value="Carpintería">Carpintería</option>
-            <option value="Edición de video">Edición de video</option>
-            <option value="Pintura de interiores">Pintura de interiores</option>
-            <option value="Construcción">Construcción</option>
-            <option value="Clases particulares">Clases particulares</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-[11px] font-bold text-slate-600 mb-1">Ubicación</label>
-          <select onchange="AppState.exploreFilter.location = this.value; renderExploreView()" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 font-medium focus:border-indigo-500 focus:bg-white focus:outline-none">
-            <option value="">Toda Bolivia</option>
-            <option value="Santa Cruz">Santa Cruz</option>
-            <option value="La Paz">La Paz</option>
-            <option value="Cochabamba">Cochabamba</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-[11px] font-bold text-slate-600 mb-1">Estado</label>
-          <select onchange="AppState.exploreFilter.status = this.value; renderExploreView()" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 font-medium focus:border-indigo-500 focus:bg-white focus:outline-none">
-            <option value="">Todos los estados</option>
-            <option value="Disponible">Disponible</option>
-            <option value="En proceso">En proceso</option>
-          </select>
+
+        <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+          <label class="inline-flex items-center space-x-2 cursor-pointer select-none">
+            <input id="filter-favs-only" type="checkbox" onchange="AppState.exploreFilter.onlyFavorites = this.checked; renderExploreView()" class="rounded border-slate-300 text-rose-500 focus:ring-rose-400 h-4 w-4">
+            <span class="font-bold text-slate-700">Solo mis favoritos (❤️)</span>
+          </label>
+          <span id="explore-count" class="text-slate-400 font-medium">Cargando publicaciones...</span>
         </div>
       </div>
 
@@ -370,6 +386,12 @@
               <option value="Santa Cruz">Santa Cruz</option>
               <option value="La Paz">La Paz</option>
               <option value="Cochabamba">Cochabamba</option>
+              <option value="Chuquisaca">Chuquisaca (Sucre)</option>
+              <option value="Tarija">Tarija</option>
+              <option value="Oruro">Oruro</option>
+              <option value="Potosí">Potosí</option>
+              <option value="Beni">Beni</option>
+              <option value="Pando">Pando</option>
             </select>
           </div>
         </div>
@@ -454,6 +476,12 @@
               <option value="Santa Cruz">Santa Cruz</option>
               <option value="La Paz">La Paz</option>
               <option value="Cochabamba">Cochabamba</option>
+              <option value="Chuquisaca">Chuquisaca (Sucre)</option>
+              <option value="Tarija">Tarija</option>
+              <option value="Oruro">Oruro</option>
+              <option value="Potosí">Potosí</option>
+              <option value="Beni">Beni</option>
+              <option value="Pando">Pando</option>
             </select>
           </div>
           <div>
@@ -506,7 +534,7 @@
             </div>
           </div>
           <div class="flex items-center space-x-2">
-            <button onclick="alert('Funcionalidad de edición de perfil');" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition-colors">
+            <button onclick="openEditProfileModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition-colors">
               Editar perfil
             </button>
             <button onclick="navigateTo('post-job')" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition-all">
@@ -729,6 +757,69 @@
           Publicar solicitud de trabajo en su lugar
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE EDICIÓN DE PERFIL -->
+  <div id="edit-profile-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+    <div class="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 space-y-5 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2.5">
+          <span class="text-2xl">✏️</span>
+          <div>
+            <h3 class="text-base font-black text-slate-900">Editar Perfil de Usuario</h3>
+            <p class="text-[11px] text-slate-500">Actualiza tus datos de contacto y ubicación</p>
+          </div>
+        </div>
+        <button onclick="closeEditProfileModal()" class="text-slate-400 hover:text-slate-700 text-xl leading-none">&times;</button>
+      </div>
+
+      <form id="edit-profile-form" onsubmit="handleEditProfileSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Nombre completo *</label>
+          <input id="edit-profile-name" type="text" required placeholder="Tu nombre completo" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Teléfono / WhatsApp de contacto *</label>
+          <input id="edit-profile-phone" type="tel" required placeholder="+591 71234567" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all">
+          <p class="text-[10px] text-slate-400 mt-1">Se usará para que los clientes te contacten directamente por WhatsApp.</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Departamento / Ciudad *</label>
+          <select id="edit-profile-location" required class="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 font-medium focus:outline-none focus:border-indigo-500 focus:bg-white transition-all">
+            <option value="Santa Cruz">Santa Cruz</option>
+            <option value="La Paz">La Paz</option>
+            <option value="Cochabamba">Cochabamba</option>
+            <option value="Chuquisaca">Chuquisaca (Sucre)</option>
+            <option value="Tarija">Tarija</option>
+            <option value="Oruro">Oruro</option>
+            <option value="Potosí">Potosí</option>
+            <option value="Beni">Beni</option>
+            <option value="Pando">Pando</option>
+          </select>
+        </div>
+
+        <div id="edit-profile-specialty-container" class="hidden">
+          <label class="block text-xs font-bold text-slate-700 mb-1">Especialidad Profesional (Proveedor)</label>
+          <input id="edit-profile-specialty" type="text" placeholder="Ej. Diseño Gráfico & Identidad" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">URL de Foto de Perfil (Avatar)</label>
+          <input id="edit-profile-avatar" type="url" placeholder="https://..." class="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all">
+        </div>
+
+        <div class="pt-2 space-y-2">
+          <button id="edit-profile-submit-btn" type="submit" class="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition-all flex items-center justify-center space-x-2">
+            <span>Guardar cambios</span>
+          </button>
+          <button type="button" onclick="closeEditProfileModal()" class="w-full py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition-colors">
+            Cancelar
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 

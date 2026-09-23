@@ -100,7 +100,8 @@ const AppState = {
     query: '',
     category: '',
     location: '',
-    status: ''
+    status: '',
+    onlyFavorites: false
   },
   favorites: SafeStorage.get('yapcity_favs', ['item-1', 'item-4']),
   adminTab: 'publicaciones',
@@ -477,8 +478,9 @@ function renderExploreView() {
     const matchesCat = !AppState.exploreFilter.category || item.category === AppState.exploreFilter.category;
     const matchesLoc = !AppState.exploreFilter.location || item.location === AppState.exploreFilter.location;
     const matchesStat = !AppState.exploreFilter.status || item.status === AppState.exploreFilter.status;
+    const matchesFav = !AppState.exploreFilter.onlyFavorites || AppState.favorites.includes(item.id);
 
-    return matchesType && matchesQuery && matchesCat && matchesLoc && matchesStat;
+    return matchesType && matchesQuery && matchesCat && matchesLoc && matchesStat && matchesFav;
   });
 
   const tabTrabajos = document.getElementById('tab-trabajos');
@@ -614,6 +616,10 @@ function renderDetailView() {
               <button onclick="toggleFavorite('${item.id}', event)" class="w-full py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition-colors flex items-center justify-center space-x-2">
                 <span>${isFav ? '❤️ Quitar de favoritos' : '🤍 Guardar en favoritos'}</span>
               </button>
+
+              <button onclick="shareCurrentItem('${item.id}')" class="w-full py-3 px-4 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-sm transition-colors flex items-center justify-center space-x-2">
+                <span>🔗 Compartir publicación</span>
+              </button>
             </div>
 
             <div class="pt-6 border-t border-slate-100">
@@ -726,20 +732,23 @@ function renderProfileView() {
       `;
     } else {
       container.innerHTML = myPosts.map(item => `
-        <div class="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-200/80 hover:border-indigo-300 shadow-sm transition-all">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-white border border-slate-200/80 hover:border-indigo-300 shadow-sm transition-all gap-3">
           <div class="flex items-center space-x-4">
-            <img src="${item.images[0]}" class="w-14 h-14 rounded-xl object-cover">
+            <img src="${item.images[0]}" class="w-14 h-14 rounded-xl object-cover flex-shrink-0">
             <div>
               <h4 class="font-bold text-slate-800 text-sm">${escapeHTML(item.title)}</h4>
               <div class="flex items-center space-x-2 text-xs text-slate-500 mt-1">
-                <span class="text-emerald-600 font-semibold">● ${item.status}</span>
+                <button onclick="toggleMyItemStatus('${item.id}', event)" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold transition-all ${item.status === 'Disponible' ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200' : (item.status === 'En proceso' ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300')}" title="Haz clic para cambiar estado">
+                  ● ${item.status} ⟳
+                </button>
                 <span>&bull;</span>
                 <span class="font-bold text-slate-700">Bs ${item.price}</span>
               </div>
             </div>
           </div>
-          <div class="flex items-center space-x-2">
-            <button onclick="navigateTo('detail', '${item.id}')" class="px-3.5 py-1.5 rounded-xl bg-slate-100 text-xs font-bold text-slate-700 hover:bg-slate-200">Ver</button>
+          <div class="flex items-center space-x-2 self-end sm:self-center">
+            <button onclick="navigateTo('detail', '${item.id}')" class="px-3.5 py-1.5 rounded-xl bg-slate-100 text-xs font-bold text-slate-700 hover:bg-slate-200 transition-colors">Ver</button>
+            <button onclick="deleteMyItem('${item.id}', event)" class="px-3 py-1.5 rounded-xl bg-rose-50 text-xs font-bold text-rose-600 hover:bg-rose-100 border border-rose-200 transition-colors" title="Eliminar publicación">🗑️ Borrar</button>
           </div>
         </div>
       `).join('');
@@ -1590,6 +1599,286 @@ function toggleMobileMenu(forceState) {
   }
 }
 
+// =========================================================
+// 🔗 COMPARTIR PUBLICACIÓN (Web Share API con fallback)
+// =========================================================
+async function shareCurrentItem(itemId) {
+  const item = AppState.items.find(i => i.id === itemId) || AppState.selectedItem;
+  if (!item) return;
+
+  const shareTitle = `Yapcity - ${item.title}`;
+  const shareText = `¡Mira esta oportunidad en Yapcity Bolivia! ${item.title} por Bs ${item.price} en ${item.location}`;
+  const shareUrl = window.location.origin + window.location.pathname + '#item=' + encodeURIComponent(item.id);
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: shareTitle,
+        text: shareText,
+        url: shareUrl
+      });
+      showToast('¡Compartido!', 'Publicación compartida con éxito', 'success');
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return; // Cancelado por el usuario
+      console.warn('navigator.share warning:', err);
+    }
+  }
+
+  // Fallback a portapapeles
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+      showToast('¡Enlace copiado!', 'Enlace copiado al portapapeles para compartir', 'success');
+      return;
+    } catch (err) {
+      console.warn('clipboard write warning:', err);
+    }
+  }
+
+  // Fallback manual seguro
+  prompt('Copia el enlace para compartir:', shareUrl);
+}
+
+// =========================================================
+// 💼 GESTIÓN DE PUBLICACIONES DEL AUTOR (SEGURIDAD Y RLS)
+// =========================================================
+async function toggleMyItemStatus(id, event) {
+  if (event) event.stopPropagation();
+  const user = AppState.currentUser;
+  if (!user) {
+    showToast('Acceso Denegado', 'Debes iniciar sesión para modificar publicaciones', 'error');
+    navigateTo('login');
+    return;
+  }
+
+  const item = AppState.items.find(i => i.id === id);
+  if (!item) return;
+
+  // 🛡️ Verificación estricta de autoría o rol admin
+  const isAuthor = (item.author && (item.author.id === user.id || item.author.name === user.name));
+  const isAdmin = user.role === 'admin';
+  if (!isAuthor && !isAdmin) {
+    showToast('Acceso no autorizado', 'Solo el autor o un administrador puede cambiar el estado', 'error');
+    return;
+  }
+
+  const nextStatusMap = {
+    'Disponible': 'En proceso',
+    'En proceso': 'Completado',
+    'Completado': 'Disponible'
+  };
+  item.status = nextStatusMap[item.status] || 'Disponible';
+
+  // Sincronizar en Supabase si está disponible
+  if (supabaseClient) {
+    try {
+      const table = item.type === 'servicio' ? 'servicios' : 'publicaciones';
+      await supabaseClient.from(table).update({ estado: item.status }).eq('id', item.id);
+    } catch (err) {
+      console.warn('Error sincronizando cambio de estado en Supabase:', err);
+    }
+  }
+
+  showToast('Estado actualizado', `La publicación ahora está "${item.status}"`, 'info');
+  renderProfileView();
+  renderHomeFeatured();
+  if (AppState.currentView === 'explore') renderExploreView();
+}
+
+async function deleteMyItem(id, event) {
+  if (event) event.stopPropagation();
+  const user = AppState.currentUser;
+  if (!user) {
+    showToast('Acceso Denegado', 'Debes iniciar sesión', 'error');
+    navigateTo('login');
+    return;
+  }
+
+  const itemIndex = AppState.items.findIndex(i => i.id === id);
+  if (itemIndex === -1) return;
+  const item = AppState.items[itemIndex];
+
+  // 🛡️ Verificación estricta de autoría o rol admin
+  const isAuthor = (item.author && (item.author.id === user.id || item.author.name === user.name));
+  const isAdmin = user.role === 'admin';
+  if (!isAuthor && !isAdmin) {
+    showToast('Acceso no autorizado', 'Solo el autor o un administrador puede eliminar esta publicación', 'error');
+    return;
+  }
+
+  if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente "${item.title}"?`)) {
+    return;
+  }
+
+  // Sincronizar eliminación en Supabase
+  if (supabaseClient) {
+    try {
+      const table = item.type === 'servicio' ? 'servicios' : 'publicaciones';
+      await supabaseClient.from(table).delete().eq('id', item.id);
+    } catch (err) {
+      console.warn('Error eliminando en Supabase:', err);
+    }
+  }
+
+  // Eliminar localmente
+  AppState.items.splice(itemIndex, 1);
+  AppState.favorites = AppState.favorites.filter(favId => favId !== id);
+  SafeStorage.set('yapcity_favs', AppState.favorites);
+
+  showToast('Publicación eliminada', 'Tu publicación ha sido retirada de Yapcity', 'info');
+  renderProfileView();
+  renderHomeFeatured();
+  if (AppState.currentView === 'explore') renderExploreView();
+}
+
+// =========================================================
+// ✏️ EDICIÓN Y GESTIÓN DE PERFIL DE USUARIO
+// =========================================================
+function openEditProfileModal() {
+  const user = AppState.currentUser;
+  if (!user) {
+    showToast('Inicia sesión', 'Debes iniciar sesión para editar tu perfil', 'info');
+    navigateTo('login');
+    return;
+  }
+
+  const nameInput = document.getElementById('edit-profile-name');
+  const phoneInput = document.getElementById('edit-profile-phone');
+  const locSelect = document.getElementById('edit-profile-location');
+  const avatarInput = document.getElementById('edit-profile-avatar');
+  const specialtyContainer = document.getElementById('edit-profile-specialty-container');
+  const specialtyInput = document.getElementById('edit-profile-specialty');
+
+  if (nameInput) nameInput.value = user.name || '';
+  if (phoneInput) phoneInput.value = user.phone || '+591 ';
+  if (locSelect) {
+    const rawLoc = user.location || '';
+    const city = rawLoc.split(',')[0].trim();
+    locSelect.value = city || 'Santa Cruz';
+  }
+  if (avatarInput) avatarInput.value = user.avatar || '';
+
+  if (specialtyContainer && specialtyInput) {
+    if (user.role === 'proveedor') {
+      specialtyContainer.classList.remove('hidden');
+      specialtyInput.value = user.specialty || '';
+    } else {
+      specialtyContainer.classList.add('hidden');
+    }
+  }
+
+  const modal = document.getElementById('edit-profile-modal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeEditProfileModal() {
+  const modal = document.getElementById('edit-profile-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function handleEditProfileSubmit(e) {
+  e.preventDefault();
+  const user = AppState.currentUser;
+  if (!user) return;
+
+  const submitBtn = document.getElementById('edit-profile-submit-btn');
+  const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `
+      <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+      </svg>
+      <span>Guardando cambios...</span>
+    `;
+  }
+
+  try {
+    const nameInput = document.getElementById('edit-profile-name');
+    const phoneInput = document.getElementById('edit-profile-phone');
+    const locSelect = document.getElementById('edit-profile-location');
+    const avatarInput = document.getElementById('edit-profile-avatar');
+    const specialtyInput = document.getElementById('edit-profile-specialty');
+
+    const newName = nameInput ? nameInput.value.trim() : user.name;
+    let newPhone = phoneInput ? phoneInput.value.trim() : user.phone;
+    const newCity = locSelect ? locSelect.value : 'Santa Cruz';
+    const newLocation = `${newCity}, Bolivia`;
+    const newAvatar = avatarInput && avatarInput.value.trim() ? avatarInput.value.trim() : user.avatar;
+    const newSpecialty = specialtyInput ? specialtyInput.value.trim() : user.specialty;
+
+    // 🛡️ Validaciones de seguridad de campos
+    if (!newName || newName.length < 3) {
+      showToast('Nombre inválido', 'El nombre debe tener al menos 3 caracteres', 'error');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnHtml;
+      }
+      return;
+    }
+
+    if (!newPhone || newPhone.length < 8) {
+      showToast('Teléfono incompleto', 'Ingresa un número de WhatsApp boliviano válido (+591)', 'error');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnHtml;
+      }
+      return;
+    }
+
+    // Actualizar usuario en estado
+    user.name = newName;
+    user.phone = newPhone;
+    user.location = newLocation;
+    user.avatar = newAvatar;
+    if (user.role === 'proveedor') {
+      user.specialty = newSpecialty;
+    }
+
+    AppState.currentUser = user;
+    SafeStorage.set('yapcity_user', user);
+
+    // Actualizar en lista de usuarios
+    const existingInUsers = AppState.users.find(u => u.id === user.id || u.email === user.email);
+    if (existingInUsers) {
+      existingInUsers.name = newName;
+      existingInUsers.location = newCity;
+      existingInUsers.avatar = newAvatar;
+    }
+
+    // Sincronizar en Supabase si está disponible
+    if (supabaseClient && user.id) {
+      try {
+        await supabaseClient.from('usuarios').update({
+          nombre: newName,
+          telefono: newPhone,
+          ciudad: newCity,
+          avatar_url: newAvatar,
+          especialidad: newSpecialty
+        }).eq('id', user.id);
+      } catch (err) {
+        console.warn('Error sincronizando perfil en Supabase:', err);
+      }
+    }
+
+    closeEditProfileModal();
+    updateAuthUI();
+    renderProfileView();
+    showToast('¡Perfil actualizado!', 'Tus datos se han guardado exitosamente', 'success');
+
+  } catch (err) {
+    console.error('Error al actualizar perfil:', err);
+    showToast('Error', 'Ocurrió un problema: ' + err.message, 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnHtml;
+    }
+  }
+}
+
 // Exponer explícitamente al objeto window para que los eventos inline funcionen siempre
 window.AppState = AppState;
 window.navigateTo = navigateTo;
@@ -1620,6 +1909,12 @@ window.upgradeCurrentUserToProvider = upgradeCurrentUserToProvider;
 window.handleImageSelection = handleImageSelection;
 window.removeImage = removeImage;
 window.fetchPublicacionesAndServicios = fetchPublicacionesAndServicios;
+window.shareCurrentItem = shareCurrentItem;
+window.toggleMyItemStatus = toggleMyItemStatus;
+window.deleteMyItem = deleteMyItem;
+window.openEditProfileModal = openEditProfileModal;
+window.closeEditProfileModal = closeEditProfileModal;
+window.handleEditProfileSubmit = handleEditProfileSubmit;
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', async () => {
